@@ -1,0 +1,15 @@
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+// For more information see https://go.microsoft.com/fwlink/?linkid=865984
+#define _STL_ASSERT(cond, mesg) _STL_VERIFY(cond, mesg)
+#define _STL_ASSERT(cond, mesg) _Analysis_assume_(cond)
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+// For more information see https://go.microsoft.com/fwlink/?linkid=865984
+#define _STL_ASSERT(cond, mesg) _STL_VERIFY(cond, mesg)
+#define _STL_ASSERT(cond, mesg) _Analysis_assume_(cond)
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+// For more information see https://go.microsoft.com/fwlink/?linkid=865984
+#define _NODISCARD [[nodiscard]]
+#define _NODISCARD

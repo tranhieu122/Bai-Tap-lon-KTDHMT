@@ -1,0 +1,15 @@
+# VS Project Junk
+.vs/
+x64/
+Debug/
+Release/
+*.user
+*.bak
+*.log
+
+# NuGet Packages
+packages/
+
+# Temporary files
+/tmp/
+.gemini/
