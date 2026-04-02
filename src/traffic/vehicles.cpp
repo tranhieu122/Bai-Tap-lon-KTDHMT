@@ -1,16 +1,20 @@
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <cmath>
+
 #include "vehicles.h"
 #include "../engine/texture.h"
 #include "../engine/utils.h"
 #include "../world/sky.h"
 #include "../world/furniture.h"
 #include "../world/vegetation.h"
-#include <cstdio>
-#include <string>
 
 void vehiclesInit() {
 }
 
 void vehiclesUpdate(float dt) {
+    (void)dt;
 }
 
 // ============================================================
@@ -57,32 +61,141 @@ static void drawLicensePlate(const std::string& text) {
     if (text.empty()) return;
     
     glPushMatrix();
-    // Move to front/back face of vehicle and scale down
-    glScalef(0.6f, 0.6f, 1.0f); 
+    // Slightly more compact plate
+    glScalef(0.5f, 0.5f, 1.0f); 
     
-    // Plate background (White)
-    Palette::WALL_WHITE.applyMaterial();
-    drawCube(0.35f, 0.18f, 0.01f);
+    // Plate background (White) - using high-quality white
+    Color(0.95f, 0.95f, 1.0f).applyMaterial();
+    drawCube(0.4f, 0.2f, 0.01f);
     
     // Text (Black)
     glDisable(GL_LIGHTING);
     glColor3f(0.05f, 0.05f, 0.05f);
-    // Scale text even further
+    // Position text precisely
     glPushMatrix();
-    glTranslatef(0, -0.04f, 0.01f);
-    glScalef(0.6f, 0.6f, 1.0f);
+    glTranslatef(0, -0.05f, 0.01f);
+    glScalef(0.55f, 0.55f, 1.0f);
     float tw = (float)text.length() * 0.025f;
     drawText3D(-tw / 2.0f, 0, 0, text.c_str());
-    glPopMatrix();
-    
+    glPopMatrix(); 
     glEnable(GL_LIGHTING);
     glPopMatrix();
+}
+static void drawRider(int colorVar, int style, bool isShadow) {
+    if (isShadow) {
+        // Draw simplified shadow version
+        glPushMatrix();
+        glTranslatef(-0.1f, 0.9f, 0);
+        drawCube(0.3f, 0.6f, 0.3f); // Body
+        glTranslatef(0, 0.45f, 0);
+        drawSphere(0.18f, 6, 4); // Head/Helmet
+        glPopMatrix();
+        return;
+    }
+
+    Color shirtCol = getShirtColor(colorVar % 16);
+    Color skinCol(0.85f, 0.7f, 0.6f);
+    Color helmetCol = getVehicleColor((colorVar + 3) % 12);
+    
+    glPushMatrix();
+    // Torso starts from origin (sitting point)
+    
+    // 1. Torso (Body)
+    shirtCol.applyMaterial();
+    glPushMatrix();
+    glRotatef(-10.0f, 0, 0, 1); // Lean forward slightly
+    glTranslatef(0, 0.3f, 0);
+    drawCube(0.28f, 0.55f, 0.28f);
+    
+    // 2. Head & Helmet/Hat
+    glPushMatrix();
+    glTranslatef(0.1f, 0.45f, 0); // Position on top of torso
+    skinCol.applyMaterial();
+    drawSphere(0.12f, 10, 10); // Face/Head
+    
+    if (style == 0) { // MOTORBIKE: Modern Glossy Helmet
+        // Use more vibrant, high-contrast helmet colors
+        Color brightHelmet = helmetCol;
+        if (colorVar % 2 == 0) brightHelmet = Palette::VEH_RED;
+        else if (colorVar % 3 == 0) brightHelmet = Palette::VEH_YELLOW;
+        brightHelmet.applyGlossyMaterial();
+        
+        glPushMatrix();
+        glTranslatef(-0.02f, 0.08f, 0);
+        drawSphere(0.19f, 12, 10); // Much larger helmet shell
+        
+        // Visor (Prominent Black glass)
+        Palette::IRON_BLACK.applyMaterial();
+        glPushMatrix();
+        glTranslatef(0.12f, -0.02f, 0);
+        drawCube(0.15f, 0.08f, 0.28f); // Larger, more visible visor
+        glPopMatrix();
+        glPopMatrix();
+    } else { // BICYCLE/TRICYCLE: Traditonal Conical Hat (Non La)
+        // Bright straw color for visibility
+        Color(0.95f, 0.9f, 0.7f).applyMaterial(); 
+        glPushMatrix();
+        glTranslatef(0, 0.08f, 0);
+        glRotatef(-5, 0, 0, 1); 
+        drawCone(0.45f, 0.25f, 16); // Very wide and tall conical hat
+        glPopMatrix();
+    }
+    glPopMatrix();
+    glPopMatrix();
+    
+    // 3. Arms (reaching for handlebars)
+    shirtCol.applyMaterial();
+    // 3. Arms (reaching for handlebars)
+    shirtCol.applyMaterial();
+    // Left Arm
+    glPushMatrix();
+    glTranslatef(0.15f, 0.25f, 0.2f); // Shoulder
+    glRotatef(-135.0f, 0, 0, 1);      // Point forward-down
+    glTranslatef(0, 0.25f, 0);        // Center cylinder (length 0.5)
+    drawCylinder(0.06f, 0.5f, 6);
+    glPopMatrix();
+    // Right Arm
+    glPushMatrix();
+    glTranslatef(0.15f, 0.25f, -0.2f);
+    glRotatef(-135.0f, 0, 0, 1);
+    glTranslatef(0, 0.25f, 0);
+    drawCylinder(0.06f, 0.5f, 6);
+    glPopMatrix();
+    
+    // 4. Legs (bent at knees)
+    Palette::METAL_DARK.applyMaterial(); // Pants
+    // Left Leg
+    glPushMatrix();
+    glTranslatef(-0.05f, -0.1f, 0.15f); // Hip
+    glRotatef(-120.0f, 0, 0, 1);        // Thigh: forward-down
+    glTranslatef(0, 0.2f, 0);           // Center cylinder (length 0.4)
+    drawCylinder(0.08f, 0.4f, 6);
+    glTranslatef(0, 0.2f, 0);           // knee joint
+    glRotatef(80.0f, 0, 0, 1);          // Calf: bend back
+    glTranslatef(0, 0.2f, 0);           // Center cylinder (length 0.4)
+    drawCylinder(0.07f, 0.4f, 6);
+    glPopMatrix();
+    // Right Leg
+    glPushMatrix();
+    glTranslatef(-0.05f, -0.1f, -0.15f);
+    glRotatef(-120.0f, 0, 0, 1);
+    glTranslatef(0, 0.2f, 0);
+    drawCylinder(0.08f, 0.4f, 6);
+    glTranslatef(0, 0.2f, 0);
+    glRotatef(80.0f, 0, 0, 1);
+    glTranslatef(0, 0.2f, 0);
+    drawCylinder(0.07f, 0.4f, 6);
+    glPopMatrix();
+    
+    glPopMatrix();
+    glPopMatrix();
+    resetMaterial();
 }
 
 // ============================================================
 // HIGH-DETAIL MOTORBIKE (Honda Wave/SH style)
 // ============================================================
-void motorbikeDraw(int colorVar, const std::string& bienSo) {
+void motorbikeDraw(int colorVar, const std::string& bienSo, bool isShadow) {
     float wheelRadius = 0.3f;
     float wheelW = 0.08f;
     Color bodyCol = getVehicleColor(colorVar);
@@ -192,24 +305,32 @@ void motorbikeDraw(int colorVar, const std::string& bienSo) {
     drawHeadlight(0.1f, false); // Front light
     glPopMatrix();
     
-    // Taillight & Plate
+    if (!isShadow) {
+        // Taillight & Plate
+        glPushMatrix();
+        glTranslatef(-0.7f, wheelRadius + 0.4f, 0.0f);
+        glRotatef(-90.0f, 0.0f, 1.0f, 0.0f);
+        drawHeadlight(0.07f, true);
+        glTranslatef(0, -0.15f, 0.02f);
+        glScalef(0.4f, 0.4f, 1.0f);
+        drawLicensePlate(bienSo);
+        glPopMatrix();
+    }
+
+    // 7. RIDER (Driver)
     glPushMatrix();
-    glTranslatef(-0.7f, wheelRadius + 0.4f, 0.0f);
-    glRotatef(-90.0f, 0.0f, 1.0f, 0.0f);
-    drawHeadlight(0.07f, true);
-    glTranslatef(0, -0.15f, 0.02f);
-    glScalef(0.4f, 0.4f, 1.0f);
-    drawLicensePlate(bienSo);
+    glTranslatef(-0.15f, wheelRadius + 0.6f, 0); // Position exactly on motorbike seat
+    drawRider(colorVar, 0, isShadow); // Style 0: Helmet
     glPopMatrix();
 }
 
 // ============================================================
 // HIGH-DETAIL SUV (Sports Utility Vehicle)
 // ============================================================
-void suvDraw(int colorVar, const std::string& bienSo) {
+void suvDraw(int colorVar, const std::string& bienSo, bool isShadow) {
     Color bodyCol = getVehicleColor(colorVar);
     float wheelR = 0.42f, wheelW = 0.28f;
-    float L = 5.2f, W = 2.2f, H = 2.0f;
+    float L = 5.2f, W = 2.2f;
     
     // Wheels
     float wbx = L * 0.32f, wbz = W * 0.42f;
@@ -228,23 +349,28 @@ void suvDraw(int colorVar, const std::string& bienSo) {
     drawTrapezoid(L * 0.7f, L * 0.55f, 0.8f, W * 0.95f); // Upper cabin
     glPopMatrix();
     
-    // Roof Rack (SUV detail)
-    Palette::METAL_DARK.applyMaterial();
-    glPushMatrix(); glTranslatef(0, 1.75f, W*0.35f); drawCube(L*0.5f, 0.05f, 0.05f); glPopMatrix();
-    glPushMatrix(); glTranslatef(0, 1.75f, -W*0.35f); drawCube(L*0.5f, 0.05f, 0.05f); glPopMatrix();
+    // Roof Rack (SUV detail) - Skip in shadow
+    if (!isShadow) {
+        Palette::METAL_DARK.applyMaterial();
+        glPushMatrix(); glTranslatef(0, 1.75f, W*0.35f); drawCube(L*0.5f, 0.05f, 0.05f); glPopMatrix();
+        glPushMatrix(); glTranslatef(0, 1.75f, -W*0.35f); drawCube(L*0.5f, 0.05f, 0.05f); glPopMatrix();
+    }
     glPopMatrix();
     
-    // Plate
-    glPushMatrix(); glTranslatef(L/2 + 0.01f, wheelR + 0.4f, 0); glRotatef(90,0,1,0); drawLicensePlate(bienSo); glPopMatrix();
+    // Plate (Skip in shadow)
+    if (!isShadow) {
+        glPushMatrix(); glTranslatef(L/2 + 0.01f, wheelR + 0.4f, 0); glRotatef(90,0,1,0); drawLicensePlate(bienSo); glPopMatrix();
+    }
 }
 
 // ============================================================
 // CITY BUS (Xe Buyt)
 // ============================================================
-void busDraw(int colorVar, const std::string& bienSo) {
+void busDraw(int colorVar, const std::string& bienSo, bool isShadow) {
+    (void)colorVar;
     Color bodyCol = Color(0.2f, 0.5f, 0.2f); // Characteristic Hanoi/Saigon green
     float wheelR = 0.55f, wheelW = 0.4f;
-    float L = 10.0f, W = 2.6f, H = 3.2f;
+    float L = 10.0f, W = 2.6f;
 
     // Wheels (6-wheeler)
     glPushMatrix(); glTranslatef(L*0.35f, wheelR, W*0.42f); drawWheel(wheelR, wheelW); glPopMatrix();
@@ -258,24 +384,28 @@ void busDraw(int colorVar, const std::string& bienSo) {
     glTranslatef(0, wheelR + 1.2f, 0);
     drawCube(L, 2.5f, W);
     
-    // Windows (Large bus windows)
-    Palette::GLASS_DARK.applyMaterial();
-    glEnable(GL_BLEND);
-    for (float x = -L/2 + 1.2f; x < L/2 - 1.0f; x += 1.8f) {
-        glPushMatrix(); glTranslatef(x, 0.5f, W/2 + 0.02f); drawQuad(1.5f, 1.2f); glPopMatrix();
-        glPushMatrix(); glTranslatef(x, 0.5f, -W/2 - 0.02f); drawQuad(1.5f, 1.2f); glPopMatrix();
+    // Windows (Large bus windows) - Skip in shadow
+    if (!isShadow) {
+        Palette::GLASS_DARK.applyMaterial();
+        glEnable(GL_BLEND);
+        for (float x = -L/2 + 1.2f; x < L/2 - 1.0f; x += 1.8f) {
+            glPushMatrix(); glTranslatef(x, 0.5f, W/2 + 0.02f); drawQuad(1.5f, 1.2f); glPopMatrix();
+            glPushMatrix(); glTranslatef(x, 0.5f, -W/2 - 0.02f); drawQuad(1.5f, 1.2f); glPopMatrix();
+        }
+        glDisable(GL_BLEND);
     }
-    glDisable(GL_BLEND);
     glPopMatrix();
     
-    // Plate
-    glPushMatrix(); glTranslatef(L/2 + 0.01f, 0.8f, 0); glRotatef(90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+    // Plate (Skip in shadow)
+    if (!isShadow) {
+        glPushMatrix(); glTranslatef(L/2 + 0.01f, 0.8f, 0); glRotatef(90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+    }
 }
 
 // ============================================================
 // HIGH-DETAIL SEDAN (Includes Taxi variants)
 // ============================================================
-void carDraw(int colorVar, const std::string& bienSo, bool isTaxi, Color taxiCol) {
+void carDraw(int colorVar, const std::string& bienSo, bool isTaxi, Color taxiCol, bool isShadow) {
     Color bodyCol = isTaxi ? taxiCol : getVehicleColor(colorVar);
     float wheelR = 0.35f, wheelW = 0.22f;
     float L = CAR_LENGTH, W = CAR_WIDTH, H = CAR_HEIGHT;
@@ -299,54 +429,62 @@ void carDraw(int colorVar, const std::string& bienSo, bool isTaxi, Color taxiCol
     drawTrapezoid(L * 0.7f, L * 0.45f, H * 0.6f, W * 0.95f);
     glPopMatrix();
     
-    // 3. Windows & Interior
-    Palette::GLASS_DARK.applyMaterial();
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // Windshield
-    glPushMatrix(); glTranslatef(0.6f, 1.0f, 0); glRotatef(55, 0, 0, 1); drawQuadXZ(0.9f, W * 0.9f); glPopMatrix();
-    // Side Windows
-    glPushMatrix(); glTranslatef(0, 0.85f, W * 0.48f); drawQuad(L * 0.6f, 0.45f); glPopMatrix();
-    glPushMatrix(); glTranslatef(0, 0.85f, -W * 0.48f); drawQuad(L * 0.6f, 0.45f); glPopMatrix();
+    // 3. Windows & Interior (Skip in shadow)
+    if (!isShadow) {
+        Palette::GLASS_DARK.applyMaterial();
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        // Windshield
+        glPushMatrix(); glTranslatef(0.6f, 1.0f, 0); glRotatef(55, 0, 0, 1); drawQuadXZ(0.9f, W * 0.9f); glPopMatrix();
+        // Side Windows
+        glPushMatrix(); glTranslatef(0, 0.85f, W * 0.48f); drawQuad(L * 0.6f, 0.45f); glPopMatrix();
+        glPushMatrix(); glTranslatef(0, 0.85f, -W * 0.48f); drawQuad(L * 0.6f, 0.45f); glPopMatrix();
+        
+        // Interior Proxy (Seats/Steering)
+        glDisable(GL_BLEND);
+        Palette::METAL_DARK.applyMaterial();
+        glPushMatrix(); glTranslatef(0.4f, 0.7f, 0.3f); drawCube(0.1f, 0.2f, 0.4f); glPopMatrix(); // steering
+        glPushMatrix(); glTranslatef(0.1f, 0.65f, 0.4f); drawCube(0.4f, 0.5f, 0.4f); glPopMatrix(); // front seat
+        glPushMatrix(); glTranslatef(-0.3f, 0.65f, 0); drawCube(0.4f, 0.5f, W * 0.8f); glPopMatrix(); // back seat
+    }
     
-    // Interior Proxy (Seats/Steering)
-    glDisable(GL_BLEND);
-    Palette::METAL_DARK.applyMaterial();
-    glPushMatrix(); glTranslatef(0.4f, 0.7f, 0.3f); drawCube(0.1f, 0.2f, 0.4f); glPopMatrix(); // steering
-    glPushMatrix(); glTranslatef(0.1f, 0.65f, 0.4f); drawCube(0.4f, 0.5f, 0.4f); glPopMatrix(); // front seat
-    glPushMatrix(); glTranslatef(-0.3f, 0.65f, 0); drawCube(0.4f, 0.5f, W * 0.8f); glPopMatrix(); // back seat
+    // 4. Details: Mirrors, Handles (Skip in shadow)
+    if (!isShadow) {
+        bodyCol.applyMaterial();
+        glPushMatrix(); glTranslatef(0.5f, 0.75f, W * 0.52f); drawSphere(0.08f, 6, 6); glPopMatrix(); // R mirror
+        glPushMatrix(); glTranslatef(0.5f, 0.75f, -W * 0.52f); drawSphere(0.08f, 6, 6); glPopMatrix(); // L mirror
+        Palette::METAL_CHROME.applyGlossyMaterial();
+        glPushMatrix(); glTranslatef(0, 0.6f, W * 0.51f); drawCube(0.15f, 0.03f, 0.02f); glPopMatrix(); // Handle
+    }
     
-    // 4. Details: Mirrors, Handles
-    bodyCol.applyMaterial();
-    glPushMatrix(); glTranslatef(0.5f, 0.75f, W * 0.52f); drawSphere(0.08f, 6, 6); glPopMatrix(); // R mirror
-    glPushMatrix(); glTranslatef(0.5f, 0.75f, -W * 0.52f); drawSphere(0.08f, 6, 6); glPopMatrix(); // L mirror
-    Palette::METAL_CHROME.applyGlossyMaterial();
-    glPushMatrix(); glTranslatef(0, 0.6f, W * 0.51f); drawCube(0.15f, 0.03f, 0.02f); glPopMatrix(); // Handle
-    
-    // 5. Taxi Sign
+    // 5. Taxi Sign (Skip in shadow)
     if (isTaxi) {
         Palette::WALL_WHITE.applyMaterial();
         glPushMatrix();
         glTranslatef(0, 1.25f, 0);
         drawCube(0.3f, 0.18f, 0.6f);
-        // "TAXI" text
-        glDisable(GL_LIGHTING);
-        glColor3f(0, 0, 0);
-        drawText3D(-0.1f, -0.05f, 0.31f, "TAXI");
-        glEnable(GL_LIGHTING);
+        // "TAXI" text (glRasterPos causes crash in shadow)
+        if (!isShadow) {
+            glDisable(GL_LIGHTING);
+            glColor3f(0, 0, 0);
+            drawText3D(-0.1f, -0.05f, 0.31f, "TAXI");
+            glEnable(GL_LIGHTING);
+        }
         glPopMatrix();
     }
     glPopMatrix();
     
-    // 6. Lights & Plates
+    // 6. Lights & Plates (Skip plates in shadow)
     float lx = L/2 + 0.02f, ly = wheelR + 0.45f, lz = W/2 - 0.25f;
     glPushMatrix(); glTranslatef(lx, ly, lz); glRotatef(90, 0,1,0); drawHeadlight(0.16f, false); glPopMatrix();
     glPushMatrix(); glTranslatef(lx, ly, -lz); glRotatef(90,0,1,0); drawHeadlight(0.16f, false); glPopMatrix();
     glPushMatrix(); glTranslatef(-lx, ly, lz); glRotatef(-90,0,1,0); drawHeadlight(0.14f, true); glPopMatrix();
     glPushMatrix(); glTranslatef(-lx, ly, -lz); glRotatef(-90,0,1,0); drawHeadlight(0.14f, true); glPopMatrix();
     
-    glPushMatrix(); glTranslatef(lx + 0.01f, ly - 0.15f, 0); glRotatef(90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
-    glPushMatrix(); glTranslatef(-lx - 0.01f, ly - 0.15f, 0); glRotatef(-90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+    if (!isShadow) {
+        glPushMatrix(); glTranslatef(lx + 0.01f, ly - 0.15f, 0); glRotatef(90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+        glPushMatrix(); glTranslatef(-lx - 0.01f, ly - 0.15f, 0); glRotatef(-90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+    }
 }
 
 // ============================================================
@@ -368,12 +506,13 @@ void drawCamaro(int colorVar) {
 // ============================================================
 // EMERGENCY VEHICLES (Police/Ambulance)
 // ============================================================
-void emergencyVehicleDraw(int colorVar, const std::string& bienSo, bool isAmbulance, bool isPolice) {
+void emergencyVehicleDraw(int colorVar, const std::string& bienSo, bool isAmbulance, bool isPolice, bool isShadow) {
+    (void)colorVar; (void)bienSo; (void)isAmbulance;
     Color bodyCol = isPolice ? Color(0.1f, 0.1f, 0.4f) : Palette::VEH_WHITE;
     
     // Use SUV base for emergency vehicles
     float wheelR = 0.45f, wheelW = 0.25f;
-    float L = 5.0f, W = 2.1f, H = 2.0f;
+    float L = 5.0f, W = 2.1f;
     
     // Body & Shell
     bodyCol.applyMaterial();
@@ -404,15 +543,17 @@ void emergencyVehicleDraw(int colorVar, const std::string& bienSo, bool isAmbula
     resetMaterial();
     glPopMatrix();
 
-    // Markings
-    if (isPolice) {
-        glDisable(GL_LIGHTING); glColor3f(1, 1, 1);
-        glPushMatrix(); glTranslatef(0, 1.25f, W/2 + 0.02f); glScalef(2,2,2); drawText3D(-0.3f, 0, 0, "POLICE"); glPopMatrix();
-        glEnable(GL_LIGHTING);
-    } else {
-        setEmissiveMaterial(Palette::NEON_RED, Palette::NEON_RED);
-        glPushMatrix(); glTranslatef(L/2 - 0.5f, 1.3f, W/2 + 0.02f); drawCube(0.4f, 0.4f, 0.02f); drawCube(0.1f, 0.8f, 0.02f); glPopMatrix();
-        resetMaterial();
+    // Markings (Skip in shadow to prevent crash)
+    if (!isShadow) {
+        if (isPolice) {
+            glDisable(GL_LIGHTING); glColor3f(1, 1, 1);
+            glPushMatrix(); glTranslatef(0, 1.25f, W/2 + 0.02f); glScalef(2,2,2); drawText3D(-0.3f, 0, 0, "POLICE"); glPopMatrix();
+            glEnable(GL_LIGHTING);
+        } else {
+            setEmissiveMaterial(Palette::NEON_RED, Palette::NEON_RED);
+            glPushMatrix(); glTranslatef(L/2 - 0.5f, 1.3f, W/2 + 0.02f); drawCube(0.4f, 0.4f, 0.02f); drawCube(0.1f, 0.8f, 0.02f); glPopMatrix();
+            resetMaterial();
+        }
     }
     glPopMatrix();
     
@@ -427,7 +568,7 @@ void emergencyVehicleDraw(int colorVar, const std::string& bienSo, bool isAmbula
 // ============================================================
 // HEAVY TRUCKS (With Cargo variants)
 // ============================================================
-void truckDraw(VehicleType type, const std::string& bienSo) {
+void truckDraw(VehicleType type, const std::string& bienSo, bool isShadow) {
     float wheelR = 0.55f, wheelW = 0.35f;
     float L = 7.5f, W = 2.4f;
     Color cabCol = Palette::VEH_BLUE;
@@ -450,43 +591,52 @@ void truckDraw(VehicleType type, const std::string& bienSo) {
     glPushMatrix();
     glTranslatef(L*0.38f, wheelR + 1.2f, 0);
     drawCube(2.2f, 1.8f, W);
-    // Windshield & Grill
-    Palette::GLASS_DARK.applyMaterial();
-    glPushMatrix(); glTranslatef(1.11f, 0.4f, 0); drawQuad(W - 0.2f, 1.0f); glPopMatrix();
+    // Windshield & Grill (Skip glass in shadow)
+    if (!isShadow) {
+        Palette::GLASS_DARK.applyMaterial();
+        glPushMatrix(); glTranslatef(1.11f, 0.4f, 0); drawQuad(W - 0.2f, 1.0f); glPopMatrix();
+    }
     Palette::METAL_GRAY.applyMaterial();
     glPushMatrix(); glTranslatef(1.11f, -0.4f, 0); drawCube(0.02f, 0.4f, W * 0.7f); glPopMatrix();
     glPopMatrix();
     
-    // 3. Cargo Section
+    // 3. Cargo Section (Lowered to sit on chassis)
     glPushMatrix();
-    glTranslatef(-L*0.12f, wheelR + 1.6f, 0);
+    glTranslatef(-L*0.12f, wheelR + 1.25f, 0); // Reduced from 1.6f to sit on bed
     if (type == VEH_TRUCKS_CONTAINER) {
         Color contCol = (bienSo.length() > 0) ? getVehicleColor(bienSo[0] % 8) : Palette::VEH_RED;
         contCol.applyMaterial();
         drawCube(5.0f, 2.5f, W + 0.1f);
-        // Ribbed detail
+        // Ribbed detail (Slightly narrower to prevent z-fighting)
         Palette::METAL_DARK.applyMaterial();
         for (float rx = -2.4f; rx < 2.5f; rx += 0.4f) {
-            glPushMatrix(); glTranslatef(rx, 0, 0); drawCube(0.08f, 2.52f, W + 0.15f); glPopMatrix();
+            glPushMatrix(); glTranslatef(rx, 0, 0); drawCube(0.08f, 2.52f, W + 0.08f); glPopMatrix();
         }
     } else { // VEH_TRUCKS_OPEN / CANVAS
         Palette::IRON_BLACK.applyMaterial();
         drawCube(5.0f, 0.8f, W + 0.1f); // Lower bed
-        // Canvas/Tarp top
+        // Canvas/Tarp top - lowered to sit on bed
         Color tarpCol = Color(0.1f, 0.25f, 0.15f); // Military green tarp
         tarpCol.applyMaterial();
         glPushMatrix();
-        glTranslatef(0, 1.0f, 0);
-        drawRoundedBox(5.0f, 2.0f, W + 0.1f, 0.3f);
+        glTranslatef(0, 0.6f, 0); // Lowered from 1.0f
+        drawRoundedBox(5.0f, 1.2f, W + 0.1f, 0.3f); // Reduced height from 2.0f
         glPopMatrix();
     }
     glPopMatrix();
+
+    // 4. Plate (Skip in shadow)
+    if (!isShadow) {
+        glPushMatrix(); glTranslatef(-L*0.5f - 0.01f, wheelR + 0.4f, 0); glRotatef(-90, 0, 1, 0); drawLicensePlate(bienSo); glPopMatrix();
+    }
 }
 
 // ============================================================
 // TRICYCLE (Xich Lo / Xe Loi)
 // ============================================================
-void drawTricycle(int colorVar, const std::string& bienSo) {
+void drawTricycle(int colorVar, const std::string& bienSo, bool isShadow) {
+    (void)isShadow;
+    (void)colorVar; (void)bienSo;
     float wheelR = 0.45f;
     float wheelW = 0.05f;
     Color bodyCol = getVehicleColor(colorVar);
@@ -538,12 +688,19 @@ void drawTricycle(int colorVar, const std::string& bienSo) {
     glTranslatef(-0.6f, wheelR + 0.6f, 0);
     drawCube(0.3f, 0.1f, 0.25f);
     glPopMatrix();
+
+    // Rider (Driver)
+    glPushMatrix();
+    glTranslatef(-0.6f, wheelR + 0.65f, 0); // Position exactly on tricycle seat
+    drawRider(colorVar + 2, 2, isShadow); // Style 2: Non La
+    glPopMatrix();
 }
 
 // ============================================================
 // BICYCLE (Xe Dap)
 // ============================================================
-void drawBicycle(int colorVar) {
+void drawBicycle(int colorVar, bool isShadow) {
+    (void)isShadow;
     float wheelR = 0.35f;
     float wheelW = 0.03f;
     Color frameCol = getVehicleColor(colorVar);
@@ -579,12 +736,18 @@ void drawBicycle(int colorVar) {
     glPushMatrix(); glTranslatef(0.6f, wheelR + 0.7f, 0); drawCube(0.05f, 0.05f, 0.5f); glPopMatrix();
     // Seat
     glPushMatrix(); glTranslatef(-0.35f, wheelR + 0.8f, 0); drawCube(0.25f, 0.05f, 0.15f); glPopMatrix();
+
+    // 4. RIDER (Bicyclist)
+    glPushMatrix();
+    glTranslatef(-0.35f, wheelR + 0.85f, 0); // Position exactly on bicycle seat
+    drawRider(colorVar + 1, 1, isShadow); // Style 1: Non La
+    glPopMatrix();
 }
 
 // ============================================================
 // MAIN DISPATCHER
 // ============================================================
-void vehicleDraw(const VehicleInfo& info) {
+void vehicleDraw(const VehicleInfo& info, bool isShadow) {
     glPushMatrix();
     glTranslatef(info.position.x, info.position.y, info.position.z);
     glRotatef(info.rotation, 0.0f, 1.0f, 0.0f);
@@ -594,32 +757,28 @@ void vehicleDraw(const VehicleInfo& info) {
     glRotatef(info.roll, 1.0f, 0.0f, 0.0f);  // Roll about local forward axis
     
     switch(info.type) {
-        case VEH_MOTORBIKE: motorbikeDraw(info.colorVariant, info.bienSo); break;
+        case VEH_MOTORBIKE: motorbikeDraw(info.colorVariant, info.bienSo, isShadow); break;
         case VEH_CAR_SEDAN: 
-            // 33% Camaro, 33% Racing Car, 34% Standard Car
             if (info.colorVariant % 3 == 0) drawCamaro(info.colorVariant);
             else if (info.colorVariant % 3 == 1 && !g_racingCarMesh.vertices.empty()) {
-                // DRAW RACING CAR (Premium Model)
                 getVehicleColor(info.colorVariant).applyMaterial();
-                // Racing Car: scale 0.8, isZUp=false (Standard Y-up), intrinsicRotation=0 
                 drawModel(g_racingCarMesh, 0.8f, false, 0.02f, 0.0f);
             }
-            else carDraw(info.colorVariant, info.bienSo, false); 
+            else carDraw(info.colorVariant, info.bienSo, false, Color(1,1,1), isShadow); 
             break;
-        case VEH_CAR_SUV:   suvDraw(info.colorVariant, info.bienSo); break;
-        case VEH_BUS:       busDraw(info.colorVariant, info.bienSo); break;
-        // ... rest of cases same as before
+        case VEH_CAR_SUV:   suvDraw(info.colorVariant, info.bienSo, isShadow); break;
+        case VEH_BUS:       busDraw(info.colorVariant, info.bienSo, isShadow); break;
         
-        case VEH_TRUCKS_OPEN:      truckDraw(VEH_TRUCKS_OPEN, info.bienSo); break;
-        case VEH_TRUCKS_CONTAINER: truckDraw(VEH_TRUCKS_CONTAINER, info.bienSo); break;
-        case VEH_AMBULANCE:        emergencyVehicleDraw(info.colorVariant, info.bienSo, true, false); break;
-        case VEH_POLICE:           emergencyVehicleDraw(info.colorVariant, info.bienSo, false, true); break;
-        case VEH_TAXI_YELLOW:      carDraw(info.colorVariant, info.bienSo, true, Palette::VEH_YELLOW); break;
-        case VEH_TAXI_GREEN:       carDraw(info.colorVariant, info.bienSo, true, Palette::VEH_GREEN); break;
+        case VEH_TRUCKS_OPEN:      truckDraw(VEH_TRUCKS_OPEN, info.bienSo, isShadow); break;
+        case VEH_TRUCKS_CONTAINER: truckDraw(VEH_TRUCKS_CONTAINER, info.bienSo, isShadow); break;
+        case VEH_AMBULANCE:        emergencyVehicleDraw(info.colorVariant, info.bienSo, true, false, isShadow); break;
+        case VEH_POLICE:           emergencyVehicleDraw(info.colorVariant, info.bienSo, false, true, isShadow); break;
+        case VEH_TAXI_YELLOW:      carDraw(info.colorVariant, info.bienSo, true, Palette::VEH_YELLOW, isShadow); break;
+        case VEH_TAXI_GREEN:       carDraw(info.colorVariant, info.bienSo, true, Palette::VEH_GREEN, isShadow); break;
         
-        case VEH_BICYCLE:   drawBicycle(info.colorVariant); break;
-        case VEH_TRICYCLE:  drawTricycle(info.colorVariant, info.bienSo); break;
-        default: carDraw(info.colorVariant, info.bienSo, false); break; 
+        case VEH_BICYCLE:   drawBicycle(info.colorVariant, isShadow); break;
+        case VEH_TRICYCLE:  drawTricycle(info.colorVariant, info.bienSo, isShadow); break;
+        default: carDraw(info.colorVariant, info.bienSo, false, Color(1,1,1), isShadow); break; 
     }
     glPopMatrix();
 }

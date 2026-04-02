@@ -14,6 +14,6 @@ void sceneUpdate(float dt);
 // Render the entire world
 void sceneDraw();
 void drawTransparentObjects();
-void drawShadowCasters();
+void drawShadowCasters(bool isShadow = false);
 int sceneGetDrawCalls();
 int sceneGetPolygons();

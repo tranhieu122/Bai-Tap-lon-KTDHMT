@@ -1,14 +1,20 @@
+#include <cstdio>
+#include <string>
+#include <vector>
+#include <cmath>
+
 #include "animation.h"
 #include "../engine/globals.h"
 #include "../engine/utils.h"
-#include <cstdio>
-#include <string>
 
 // Basic paths: Vehicles travel along Z axis (main street) and X axis (side
 // street) We just loop them when they go out of bounds.
 
 static const float BOUND_Z_SPAWN = STREET_LENGTH / 2.0f + 10.0f;
 static const float BOUND_X_SPAWN = SIDE_STREET_LENGTH / 2.0f + 10.0f;
+
+int g_peopleEnteredToday = 0;
+static float g_lastTimeOfDay = 0.0f;
 
 std::string sinhBienSoVN() {
   // Mau: XX-AY NNN.NN (VD: 29-A1 123.45)
@@ -86,7 +92,7 @@ void animationInit() {
   }
 
   // 2. SPAWN PEDESTRIANS (Sidewalk strictly)
-  int pedCount = 40;
+  int pedCount = 20; // Reduced for less spam
   for (int i = 0; i < pedCount; i++) {
     PedestrianInfo p;
     p.state = PED_WALKING;
@@ -99,7 +105,19 @@ void animationInit() {
     p.walkPhase = randomFloat(0, 6.28f);
     p.speed = randomFloat(PEDESTRIAN_SPEED * 0.8f, PEDESTRIAN_SPEED * 1.2f);
     p.colorVariant = randomInt(0, 9);
+    p.shirtColor = randomInt(0, 15); // Persistent color
     p.crossingStreet = false;
+    p.isWaving = false;
+    p.waveTimer = 0.0f;
+
+    // Advanced AI Initial State
+    p.originalX = swX;
+    p.targetX = swX;
+    p.hasBag = (randomInt(0, 100) < 30); // 30% start with a bag
+    p.isInside = false;
+    p.stayTimer = 0.0f;
+    p.buildingIdx = -1;
+
     g_pedestrians.push_back(p);
   }
 }
@@ -109,7 +127,7 @@ void animationUpdate(float dt) {
   float animDt = dt * g_animSpeed;
 
   for (auto &v : g_vehicles) {
-    // 1. COLLISION AVOIDANCE (Simplified for 2 lanes)
+    // 1. COLLISION AVOIDANCE
     bool stopByObstacle = false;
     float senseDist = (v.type == VEH_MOTORBIKE) ? 5.0f : 9.0f;
 
@@ -125,37 +143,99 @@ void animationUpdate(float dt) {
 
     v.stopped = stopByObstacle;
 
-    // 2. MOVEMENT & PREMIUM PHYSICS
+    // 2. MOVEMENT & PHYSICS
     float targetPitch = 0.0f;
-    float targetRoll = 0.0f;
-
     if (!v.stopped) {
         v.position.z += v.speed * v.direction * animDt;
         v.position.x = (v.lane == 0) ? -2.5f : 2.5f; 
-
-        // Pitch up slightly when accelerating/cruising
         targetPitch = -1.5f; 
-
-        // Boundary wrap
         if (v.direction == 1 && v.position.z > STREET_LENGTH/2 + 10.0f) v.position.z = -STREET_LENGTH/2 - 10.0f;
         else if (v.direction == -1 && v.position.z < -STREET_LENGTH/2 - 10.0f) v.position.z = STREET_LENGTH/2 + 10.0f;
     } else {
-        // Dip forward when braking
         targetPitch = 3.5f;
-        // Subtle engine vibration
         v.position.y = 0.005f * sinf(g_elapsedTime * 20.0f);
     }
-
-    // Smooth physics transition (Spring-Damper style approximation)
     v.pitch += (targetPitch - v.pitch) * 5.0f * dt;
-    v.roll += (targetRoll - v.roll) * 3.0f * dt;
   }
 
-  // 3. PEDESTRIANS
+  // 3. PEDESTRIANS AI (Advanced Navigation)
   for (auto &p : g_pedestrians) {
     p.walkPhase += p.speed * 5.0f * animDt;
-    p.position.z += p.speed * p.direction * animDt;
+
+    // --- HARD-TARGET STEERING & COLLISION AVOIDANCE ---
+    float finalTargetX = p.originalX;
+    float maxPush = 0.0f;
+    float lookAheadZ = 3.2f; // Increased lookahead to 3.2m
     
+    // Combine Tree and Furniture checks with Hard-Targeting
+    // Check Trees
+    for (const auto &t : g_sceneTrees) {
+        float fwdDistZ = (p.position.z - t.transform.position.z) * p.direction; 
+        if (fwdDistZ > -0.5f && fwdDistZ < lookAheadZ) { // Object is ahead
+            float distX = fabsf(p.position.x - t.transform.position.x);
+            float safeRadius = 1.0f; 
+            if (distX < safeRadius) {
+                float pushSide = (p.position.x > t.transform.position.x) ? 1.0f : -1.0f;
+                float requiredX = t.transform.position.x + (safeRadius + 0.1f) * pushSide;
+                float pushAmt = fabsf(requiredX - p.originalX);
+                if (pushAmt > maxPush) {
+                    finalTargetX = requiredX;
+                    maxPush = pushAmt;
+                }
+            }
+        }
+    }
+    // Check Furniture (including Power Poles)
+    for (const auto &f : g_sceneFurniture) {
+        float fwdDistZ = (p.position.z - f.transform.position.z) * p.direction;
+        if (fwdDistZ > -0.5f && fwdDistZ < lookAheadZ) {
+            float distX = fabsf(p.position.x - f.transform.position.x);
+            float safeRadius = 1.2f; // Power poles and furniture need wider clearance
+            if (distX < safeRadius) {
+                float pushSide = (p.position.x > f.transform.position.x) ? 1.0f : -1.0f;
+                float requiredX = f.transform.position.x + (safeRadius + 0.15f) * pushSide;
+                float pushAmt = fabsf(requiredX - p.originalX);
+                if (pushAmt > maxPush) {
+                    finalTargetX = requiredX;
+                    maxPush = pushAmt;
+                }
+            }
+        }
+    }
+
+    // --- MOVEMENT PHYSICS (Normal Walking) ---
+    float oldZ = p.position.z;
+    p.position.z += p.speed * p.direction * animDt;
+
+    float oldX = p.position.x;
+    // Lower gain (1.8 instead of 2.5) for a more graceful steering
+    p.position.x += (finalTargetX - p.position.x) * 1.8f * animDt;
+
+    // Rotation (Face movement direction)
+    float dx = p.position.x - oldX;
+    float dz = p.position.z - oldZ;
+    if (fabsf(dx) > 0.0001f || fabsf(dz) > 0.0001f) {
+        float targetRot = atan2f(dx, dz) * 180.0f / 3.14159f;
+        float diff = targetRot - p.rotation;
+        while (diff > 180.0f) diff -= 360.0f;
+        while (diff < -180.0f) diff += 360.0f;
+        p.rotation += diff * 10.0f * animDt;
+    }
+    
+    // Random Waving Logic (Wave once in a while)
+    if (!p.isWaving) {
+        if (randomInt(0, 1000) < 2) { 
+            p.isWaving = true;
+            p.waveTimer = 2.5f;
+        }
+    } else {
+        p.waveTimer -= animDt;
+        if (p.waveTimer <= 0.0f) {
+            p.isWaving = false;
+            p.waveTimer = 0.0f;
+        }
+    }
+
     // Boundary wrap
     if (p.position.z > STREET_LENGTH/2) p.position.z = -STREET_LENGTH/2;
     else if (p.position.z < -STREET_LENGTH/2) p.position.z = STREET_LENGTH/2;

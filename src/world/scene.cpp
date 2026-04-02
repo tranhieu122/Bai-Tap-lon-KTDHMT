@@ -86,7 +86,7 @@ void spawnBuildings() {
   for (int roadSide = 0; roadSide < 2; roadSide++) {
     bool isRight = (roadSide == 1);
     float signX = isRight ? 1.0f : -1.0f;
-    float bldgX = STREET_WIDTH / 2 + SIDEWALK_WIDTH + BLOCK_DEPTH / 2;
+    bldgX = STREET_WIDTH / 2 + SIDEWALK_WIDTH + BLOCK_DEPTH / 2;
 
     BuildingInfo feature;
     feature.type = BLDG_GLASS_TOWER;
@@ -189,8 +189,8 @@ void sceneDraw() {
 void drawTransparentObjects() {}
 int sceneGetDrawCalls() { return drawCalls; }
 int sceneGetPolygons() { return drawCalls * 250; }
-void drawShadowCasters() {
-  for (const auto &b : g_buildings) drawBuilding(b);
+void drawShadowCasters(bool isShadow) {
+  for (const auto &b : g_buildings) drawBuilding(b, isShadow);
   for (const auto &f : g_sceneFurniture) furnitureDraw(f);
   trafficLightsDraw();
 }

@@ -13,8 +13,8 @@ void peopleUpdate(float dt);
 
 // Render all pedestrians
 void peopleDraw();
-void personDraw(const PedestrianInfo& info);
-void personStandingDraw(int colorVar);
-void personWalkingDraw(int colorVar, float walkPhase);
-void personSittingDraw(int colorVar);
-void vendorDraw(int colorVar);
+void personDraw(const PedestrianInfo& info, bool isShadow = false);
+void personStandingDraw(int colorVar, bool isShadow = false);
+void personWalkingDraw(int colorVar, float walkPhase, bool isWaving = false, bool isShadow = false);
+void personSittingDraw(int colorVar, bool isShadow = false);
+void vendorDraw(int colorVar, bool isShadow = false);

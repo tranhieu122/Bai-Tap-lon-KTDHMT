@@ -45,7 +45,14 @@ void skyInit() {
 // ============================================================
 void skyUpdate(float dt) {
     if (!g_paused) {
-        g_timeOfDay += dt * realTimeToGameHours * g_animSpeed;
+        // Calculate dynamic realTimeToGameHours
+        // 10 minutes total (600s). 
+        // 7 minutes for Day (6:00 to 18:00) -> 12 hours in 420s -> 12/420 = 0.02857
+        // 3 minutes for Night (18:00 to 6:00) -> 12 hours in 180s -> 12/180 = 0.06667
+        
+        float rate = (g_timeOfDay >= 6.0f && g_timeOfDay < 18.0f) ? (12.0f / 420.0f) : (12.0f / 180.0f);
+        
+        g_timeOfDay += dt * rate * g_animSpeed;
         if (g_timeOfDay >= 24.0f) g_timeOfDay -= 24.0f;
     }
     
@@ -286,38 +293,61 @@ void skyDraw() {
             glVertex3f(sx, sy, sz);
         }
         // Shooting stars - deterministic based on elapsed time
-        int shootIdx = ((int)(g_elapsedTime * 7.0f)) % 100;
         glEnd();
         glPointSize(1.0f);
     }
     
     // --------------------------------------------------------
-    // Draw clouds (Simple pseudo-volumetric layers)
+    // Draw clouds (Improved Volumetric Clusters)
     // --------------------------------------------------------
     if (g_weather != WEATHER_RAIN) {
-        Color cloudColor = Color(1,1,1).lerp(skyTop, 0.3f);
-        cloudColor.a = 0.5f;
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        // Base cloud color depends on time of day
+        Color cloudBase(1.0f, 1.0f, 1.0f);
+        h = g_timeOfDay;
+        
+        if (h < 7.0f || h > 17.0f) { // Dawn/Sunset
+            cloudBase = Color(1.0f, 0.7f, 0.6f); // Pinkish
+            if (h < 5.5f || h > 19.5f) cloudBase = Color(0.2f, 0.25f, 0.35f); // Night dark clouds
+        }
         
         for (int i = 0; i < 3; i++) {
-            cloudColor.a = clouds[i].density;
-            cloudColor.apply();
-            
             glPushMatrix();
-            glTranslatef(
-                fmodf(clouds[i].offset.x, 200.0f) - 100.0f,
-                clouds[i].alt,
-                fmodf(clouds[i].offset.z, 200.0f) - 100.0f
-            );
+            // Larger wrap for wider view
+            float tx = fmodf(clouds[i].offset.x, 800.0f) - 400.0f;
+            float tz = fmodf(clouds[i].offset.z, 800.0f) - 400.0f;
+            glTranslatef(tx, clouds[i].alt, tz);
             
-            // Draw a few large flattened spheres as clouds
-            for(int cx = -1; cx <= 1; cx++) {
-                for(int cz = -1; cz <= 1; cz++) {
-                    if ((cx+cz)%2 != 0) continue; // Checker pattern
+            // Draw a grid of cloud clusters
+            for(int cx = -3; cx <= 3; cx++) {
+                for(int cz = -3; cz <= 3; cz++) {
+                    if ((cx + cz) % 2 != 0) continue; 
+
                     glPushMatrix();
-                    glTranslatef(cx * 80.0f, noise1D(cx*2.3f+cz)*10.0f, cz * 80.0f);
-                    glScalef(1.5f, 0.3f, 1.2f);
-                    // We use drawHemisphere instead basically
-                    drawHemisphere(30.0f, 12, 6);
+                    glTranslatef(cx * 150.0f, noise1D(cx*3.0f+cz*7.0f)*15.0f, cz * 150.0f);
+                    
+                    // Each cluster has 6 "puffs" of varying size
+                    for (int puff = 0; puff < 6; puff++) {
+                        float seed = (float)puff + cx * 2.0f + cz * 3.0f;
+                        float px = noise1D(seed * 1.123f) * 45.0f;
+                        float py = noise1D(seed * 2.234f) * 12.0f;
+                        float pz = noise1D(seed * 3.345f) * 45.0f;
+                        float pSize = 25.0f + noise1D(seed * 4.456f) * 20.0f;
+                        float pAlpha = clouds[i].density * (0.3f + noise1D(seed * 5.567f) * 0.45f);
+
+                        glPushMatrix();
+                        glTranslatef(px, py, pz);
+                        glScalef(1.8f, 0.45f, 1.5f); // Flattened puffs
+                        
+                        Color puffCol = cloudBase;
+                        puffCol.a = pAlpha;
+                        puffCol.apply();
+                        
+                        drawHemisphere(pSize, 12, 6);
+                        glPopMatrix();
+                    }
                     glPopMatrix();
                 }
             }
@@ -382,8 +412,8 @@ void weatherEffectDraw() {
             fogColor = Color(0.6f, 0.6f, 0.65f).lerp(skyBottom, 0.3f);
         } 
         else if (g_weather == WEATHER_RAIN) {
-            density = 0.006f;
-            fogColor = Color(0.4f, 0.4f, 0.45f).lerp(skyBottom, 0.4f);
+            density = 0.012f; // Increased fog for rain
+            fogColor = Color(0.3f, 0.32f, 0.35f).lerp(skyBottom, 0.2f); // Darker, gloomier fog
         }
         else if (g_fogEnabled) {
             density = 0.008f;

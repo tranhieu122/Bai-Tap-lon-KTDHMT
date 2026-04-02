@@ -339,6 +339,7 @@ void cameraOnMouseButton(int button, int state, int x, int y) {
 }
 
 void cameraOnMouseWheel(int wheel, int dir, int x, int y) {
+    (void)wheel; (void)x; (void)y;
     if (isTrans) return;
 
     if (g_cameraMode == CAMERA_ORBIT) {
@@ -353,7 +354,7 @@ void cameraOnMouseWheel(int wheel, int dir, int x, int y) {
 
 // ASCII keys
 void cameraOnKeyDown(unsigned char key) {
-    key = tolower(key);
+    key = (unsigned char)tolower(key);
     if (key == 'w') k_W = true;
     if (key == 's') k_S = true;
     if (key == 'a') k_A = true;
@@ -369,7 +370,7 @@ void cameraOnKeyDown(unsigned char key) {
 }
 
 void cameraOnKeyUp(unsigned char key) {
-    key = tolower(key);
+    key = (unsigned char)tolower(key);
     if (key == 'w') k_W = false;
     if (key == 's') k_S = false;
     if (key == 'a') k_A = false;
@@ -379,6 +380,7 @@ void cameraOnKeyUp(unsigned char key) {
 }
 
 void cameraOnSpecialKey(int key) {
+    (void)key;
     // We could map arrows to WASD here if wanted
 }
 

@@ -35,18 +35,17 @@ void particlesUpdate(float dt) {
             if (!rain[i].active) {
                 rain[i].active = true;
                 // Spawn randomly around camera
-                float rx = randomFloat(-30.0f, 30.0f);
-                float rz = randomFloat(-30.0f, 30.0f);
-                float ry = randomFloat(20.0f, 40.0f);
+                float rx = randomFloat(-40.0f, 40.0f); // Slightly wider range
+                float rz = randomFloat(-40.0f, 40.0f);
+                float ry = randomFloat(25.0f, 45.0f); // Fall from higher
                 rain[i].position = camPos + Vector3(rx, ry, rz);
                 
                 // Wind slightly pushes rain
-                rain[i].velocity = Vector3(randomFloat(-1.0f, 4.0f), randomFloat(-15.0f, -20.0f), randomFloat(-0.5f, 0.5f));
+                rain[i].velocity = Vector3(randomFloat(-1.5f, 4.5f), randomFloat(-30.0f, -22.0f), randomFloat(-1.0f, 1.0f));
                 rain[i].life = 0.0f;
-                // Assuming drops hit ground round y=0 in roughly 2 secs max
                 rain[i].maxLife = 2.5f; 
-                rain[i].size = randomFloat(0.02f, 0.05f); // Rain streak length factor
-                rain[i].color = Color(0.6f, 0.6f, 0.8f, 0.6f);
+                rain[i].size = randomFloat(0.04f, 0.08f); 
+                rain[i].color = Color(0.85f, 0.85f, 1.0f, 0.7f); // Brighter rain
                 spawnRequest--;
             }
         }
@@ -90,6 +89,7 @@ void particlesUpdate(float dt) {
 void particlesDraw() {
     glDepthMask(GL_FALSE);
     glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D); // CRITICAL: Lines don't use textures
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
@@ -107,19 +107,20 @@ void particlesDraw() {
     }
     
     // Draw Rain (Lines) - Draw if active, even if spawning is off
-    glLineWidth(1.0f);
+    glLineWidth(2.0f); // Thicker lines for visibility
     glBegin(GL_LINES);
     for(int i=0; i<MAX_RAIN_PARTICLES; i++) {
         if (rain[i].active) {
             rain[i].color.apply();
             glVertex3f(rain[i].position.x, rain[i].position.y, rain[i].position.z);
             // Draw streak based on velocity to simulate motion blur
-            Vector3 tail = rain[i].position - rain[i].velocity * 0.05f;
+            Vector3 tail = rain[i].position - rain[i].velocity * 0.07f; // Longer streaks
             glVertex3f(tail.x, tail.y, tail.z);
         }
     }
     glEnd();
     
+    glEnable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
     glEnable(GL_LIGHTING);
     glDepthMask(GL_TRUE);
@@ -141,5 +142,6 @@ void emitSmoke(const Vector3& pos, const Vector3& vel) {
 }
 
 void emitRainDrop(const Vector3& pos) {
+    (void)pos;
     // Already handled in update bulk-spawn for efficiency
 }

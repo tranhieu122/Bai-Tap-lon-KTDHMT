@@ -1,9 +1,13 @@
+#include <cstdio>
+#include <vector>
+#include <string>
+
+#include <GL/freeglut.h>
+
 #include "traffic.h"
 #include "../engine/globals.h"
 #include "../engine/utils.h"
 #include "../world/street.h"
-#include <cstdio>
-#include <GL/freeglut.h>
 
 // ============================================================
 // LOGIC
@@ -36,6 +40,27 @@ void trafficUpdate(float dt) {
     
     int phase = (int)(t / phaseLen);
     g_phaseTimeLeft = phaseLen - fmodf(t, phaseLen);
+
+    bool isYellow = (g_phaseTimeLeft <= YELLOW_DURATION);
+
+    switch (phase) {
+    case 0: // Phase 1: Main Green
+        g_mainTrafficLight = isYellow ? TL_YELLOW : TL_GREEN;
+        g_sideTrafficLight = TL_RED;
+        break;
+    case 1: // Phase 2: Side Green (for symmetry in this simple 1-road model, we alternate)
+        g_mainTrafficLight = TL_RED;
+        g_sideTrafficLight = isYellow ? TL_YELLOW : TL_GREEN;
+        break;
+    case 2: // Phase 3: Main Green again
+        g_mainTrafficLight = isYellow ? TL_YELLOW : TL_GREEN;
+        g_sideTrafficLight = TL_RED;
+        break;
+    case 3: // Phase 4: Side Green again
+        g_mainTrafficLight = TL_RED;
+        g_sideTrafficLight = isYellow ? TL_YELLOW : TL_GREEN;
+        break;
+    }
 }
 
 // ============================================================

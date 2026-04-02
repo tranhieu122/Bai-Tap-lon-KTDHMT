@@ -613,7 +613,6 @@ void drawPrism(float width, float height, float depth) {
 void drawStairs(int steps, float totalWidth, float totalHeight, float depth) {
     float stepH = totalHeight / steps;
     float stepD = depth / steps;
-    float hw = totalWidth * 0.5f;
     
     for (int i = 0; i < steps; i++) {
         glPushMatrix();

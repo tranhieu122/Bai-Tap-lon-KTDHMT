@@ -17,6 +17,7 @@ void streetInit() {
 // UPDATE LOGIC
 // ============================================================
 void streetUpdate(float dt) {
+  (void)dt;
   // Not much to update for static geometry
 }
 

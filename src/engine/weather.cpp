@@ -9,6 +9,7 @@ void weatherInit() {
 }
 
 void weatherUpdate(float dt) {
+    (void)dt;
     if (g_weather == WEATHER_RAIN) {
         g_rainEnabled = true;
         g_fogEnabled = true; // Rain usually comes with limited visibility

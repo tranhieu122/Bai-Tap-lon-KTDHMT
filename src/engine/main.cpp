@@ -1,25 +1,29 @@
+#include <cstdio>
+#include <ctime>
+#include <algorithm>
+#include <vector>
+#include <string>
+
+#include "globals.h"
+#include "camera.h"
+#include "lighting.h"
+#include "texture.h"
+#include "weather.h"
+#include "utils.h"
+#include "ui.h"
+
+#include "../world/scene.h"
+#include "../world/sky.h"
+#include "../world/buildings.h"
+#include "../world/furniture.h"
+#include "../world/street.h"
+#include "../world/vegetation.h"
+
 #include "../traffic/animation.h"
 #include "../traffic/particles.h"
 #include "../traffic/people.h"
 #include "../traffic/traffic.h"
 #include "../traffic/vehicles.h"
-#include "../world/buildings.h"
-#include "../world/furniture.h"
-#include "../world/scene.h"
-#include "../world/sky.h"
-#include "../world/street.h"
-#include "../world/vegetation.h"
-#include "camera.h"
-#include "globals.h"
-#include "lighting.h"
-#include "texture.h"
-#include "ui.h"
-#include "utils.h"
-#include "weather.h"
-#include <cstdio>
-#include <ctime>
-#include <string>
-#include <vector>
 
 // Define Global State
 int g_windowWidth = WINDOW_WIDTH;
@@ -133,12 +137,15 @@ static void displayFunc() {
   for (const auto &p : g_pedestrians)
     personDraw(p);
 
-  // Multi-pass Jittered Planar Shadows (ve bong do mem mai)
+  // Multi-pass Jittered Planar Shadows (Nang cap do bong sieu thuc)
   if (g_timeOfDay > 6.0f && g_timeOfDay < 18.0f && g_weather == WEATHER_CLEAR) {
     Vector3 lightDir = skyGetLightDirection();
+    float sunEle = lightDir.y;
+    // Allow longer shadows (0.13f clamp) but fade alpha to prevent 'black wall'
+    float shadowY = std::max(sunEle, 0.13f); 
     float shadowMat[16] = { 0 };
-    float ground[4] = {0.0f, 1.0f, 0.0f, -0.05f};
-    float lightPos[4] = {lightDir.x, lightDir.y, lightDir.z, 0.0f};
+    float ground[4] = {0.0f, 1.0f, 0.0f, -0.02f}; 
+    float lightPos[4] = {lightDir.x, shadowY, lightDir.z, 0.0f};
 
     float dot = ground[0] * lightPos[0] + ground[1] * lightPos[1] +
                 ground[2] * lightPos[2] + ground[3] * lightPos[3];
@@ -164,28 +171,46 @@ static void displayFunc() {
 
     glDisable(GL_LIGHTING);
     glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
 
-    // Render 3 passes with slight displacement to simulate soft shadow
-    float offsets[3][2] = {{0, 0}, {0.1f, 0.08f}, {-0.1f, -0.08f}};
-    float alphas[3] = {0.4f, 0.2f, 0.2f};
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.0f, -1.0f);
 
-    for (int i = 0; i < 3; i++) {
+    // Render 8 passes with Poisson-like jitter to simulate deep soft shadows
+    struct Jitter { float x, z, a; };
+    Jitter samples[8] = {
+        {0.00f, 0.00f, 0.25f}, // Central core
+        {0.12f, 0.05f, 0.15f},
+        {-0.10f, 0.12f, 0.15f},
+        {0.08f, -0.12f, 0.15f},
+        {-0.12f, -0.06f, 0.15f},
+        {0.22f, 0.18f, 0.10f}, // Outer soft edge
+        {-0.20f, -0.22f, 0.10f},
+        {0.15f, -0.25f, 0.10f}
+    };
+
+    // Calculate dynamic fading based on sun elevation
+    float alphaScale = std::min(sunEle * 2.0f, 1.0f);
+    if (sunEle < 0.2f) alphaScale *= (sunEle / 0.2f); // Fade out near horizon
+
+    for (int i = 0; i < 8; i++) {
       glPushMatrix();
-      glTranslatef(offsets[i][0], 0, offsets[i][1]);
+      glTranslatef(samples[i].x, 0, samples[i].z);
       glMultMatrixf(shadowMat);
-      glColor4f(0.0f, 0.0f, 0.0f, alphas[i] * 0.7f); // Darker, cleaner shadows
+      
+      // Shadow color: Deep navy-black (0.01, 0.01, 0.05) for realism
+      glColor4f(0.01f, 0.01f, 0.05f, samples[i].a * alphaScale * 0.8f);
 
-      drawShadowCasters();
-      for (const auto &v : g_vehicles)
-        vehicleDraw(v);
+      // Chỉ giữ lại đổ bóng cho người đi bộ để tăng hiệu năng và tập trung thị giác
       for (const auto &p : g_pedestrians)
-        personDraw(p);
+        personDraw(p, true);
       glPopMatrix();
     }
 
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
+    glDisable(GL_POLYGON_OFFSET_FILL);
     glEnable(GL_LIGHTING);
   }
 
@@ -340,6 +365,7 @@ static void setupMenu() {
 }
 
 static void keyboardFunc(unsigned char key, int x, int y) {
+  (void)x; (void)y;
   if (key == 27)
     exit(0); // ESC
 
@@ -368,9 +394,9 @@ static void keyboardFunc(unsigned char key, int x, int y) {
   cameraOnKeyDown(key);
 }
 
-static void keyboardUpFunc(unsigned char key, int x, int y) { cameraOnKeyUp(key); }
+static void keyboardUpFunc(unsigned char key, int x, int y) { (void)x; (void)y; cameraOnKeyUp(key); }
 
-static void specialFunc(int key, int x, int y) { cameraOnSpecialKey(key); }
+static void specialFunc(int key, int x, int y) { (void)x; (void)y; cameraOnSpecialKey(key); }
 
 static void mouseFunc(int button, int state, int x, int y) {
   cameraOnMouseButton(button, state, x, y);

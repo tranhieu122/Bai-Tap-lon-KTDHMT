@@ -19,6 +19,8 @@
 #define DEG2RAD(x) ((x) * (float)M_PI / 180.0f)
 #define RAD2DEG(x) ((x) * 180.0f / (float)M_PI)
 
+extern int g_peopleEnteredToday; // Counter for shop visits per day
+
 // ============================================================
 // WINDOW SETTINGS
 // ============================================================
@@ -105,7 +107,7 @@ const float PERSON_WIDTH = 0.4f;
 const float DEFAULT_ANIM_SPEED = 1.0f;
 const float VEHICLE_SPEED = 4.5f;       // Reduced for realism and safety
 const float PEDESTRIAN_SPEED = 1.5f;    // units/sec
-const float DAY_CYCLE_DURATION = 120.0f; // seconds for full day
+const float DAY_CYCLE_DURATION = 600.0f; // seconds for full day (Slowed down)
 const float CLOUD_SPEED = 0.5f;
 
 // Traffic light timing (seconds)
@@ -123,7 +125,7 @@ const int   MAX_LIGHTS = 8;  // OpenGL fixed pipeline limit
 // ============================================================
 // PARTICLE SYSTEM
 // ============================================================
-const int MAX_RAIN_PARTICLES = 2000;
+const int MAX_RAIN_PARTICLES = 5000;
 const int MAX_SMOKE_PARTICLES = 200;
 const int MAX_SPARKLE_PARTICLES = 100;
 
@@ -204,7 +206,9 @@ enum PedestrianState {
     PED_STANDING = 0,
     PED_WALKING,
     PED_SITTING,
-    PED_VENDOR          // Nguoi ban hang rong
+    PED_VENDOR,          // Nguoi ban hang rong
+    PED_ENTERING_BUILDING,
+    PED_EXITING_BUILDING
 };
 
 // ============================================================
@@ -375,9 +379,20 @@ struct PedestrianInfo {
     float rotation;
     float walkPhase;    // Animation phase
     float speed;
-    int colorVariant;
+    int colorVariant;   // Still useful for overall palette
+    int shirtColor;     // New: Persistent shirt color index
     int direction;      // 1 or -1
     bool crossingStreet;
+    bool isWaving;      
+    float waveTimer;    
+    
+    // AI Advanced Fields
+    float targetX;      // X goal for steering/entering
+    float originalX;    // Base sidewalk X
+    bool hasBag;        // Visual accessory
+    bool isInside;      // Hidden inside building
+    float stayTimer;    // Time to stay inside
+    int buildingIdx;    // Which building they are visiting
 };
 
 // ============================================================
@@ -458,6 +473,7 @@ namespace Palette {
     const Color WOOD_DARK(0.42f, 0.28f, 0.12f);
     const Color CONCRETE(0.70f, 0.68f, 0.65f);
     const Color TILE_WHITE(0.92f, 0.92f, 0.90f);      // Gach men trang
+    const Color LEATHER_BROWN(0.45f, 0.25f, 0.15f);   // Mau da cho tui xach
     
     // === MAU XE ===
     const Color VEH_RED(0.85f, 0.12f, 0.10f);

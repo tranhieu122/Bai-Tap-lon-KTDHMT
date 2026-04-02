@@ -6,7 +6,7 @@
 // ============================================================
 
 // Build geometry for a specific building at runtime
-void drawBuilding(const BuildingInfo& info);
+void drawBuilding(const BuildingInfo& info, bool isShadow = false);
 void drawTubeHouse(float w, float h, float d, int floors, int colorIdx, bool hasShop, bool hasBalcony, const std::string& shopName);
 void drawOfficeBuilding(float w, float h, float d, int floors, int colorIdx);
 void drawShop(float w, float h, float d, int colorIdx, const std::string& shopName);

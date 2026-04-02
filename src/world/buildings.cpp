@@ -197,6 +197,7 @@ static void drawDetailedDoor(float w, float h, bool hasGlass = false, int varian
 
 // Signage/Shop sign with 3D effect
 static void drawStorageSign(float w, float h, Color color, const char *text, int variant = 0) {
+  (void)text;
   // Sign background
   color.applyMaterial();
   glPushMatrix();
@@ -621,6 +622,7 @@ static void drawWaterTank(float r, float l) {
 }
 
 static void drawShopFront(float w, float h, float d, const std::string &name, int colorIdx = 0) {
+  (void)name;
   // Glass front
   Palette::GLASS_BLUE.applyGlossyMaterial(100.0f);
   glEnable(GL_BLEND);
@@ -943,6 +945,7 @@ void drawApartmentBlock(float w, float h, float d, int floors, int colorIdx) {
 // MODERN SHOPFRONT (Cua Hang Hien Dai)
 // ============================================================
 void drawModernShopfront(float w, float h, float d, int colorIdx, const std::string &shopName) {
+  (void)shopName;
   // Shopfront color scheme
   const Color shopfrontColors[] = {
     Color(0.95f, 0.6f, 0.6f), Color(0.6f, 0.9f, 0.7f), Color(0.9f, 0.85f, 0.6f),
@@ -1087,6 +1090,7 @@ void drawMarketBuilding(float w, float h, float d, int colorIdx) {
 // TEMPLE/CULTURAL BUILDING (Dien Tho/Nha Tho)
 // ============================================================
 void drawTempleBuilding(float w, float h, float d, int colorIdx) {
+  (void)colorIdx;
   // Temple colors
   Color templeRed = Color(0.8f, 0.2f, 0.2f);
   Color templeGold = Palette::METAL_CHROME;
@@ -1320,6 +1324,7 @@ void drawTubeHouse(float w, float h, float d, int floors, int colorIdx,
 // OFFICE BUILDING (Toa Nha Van Phong)
 // ============================================================
 void drawOfficeBuilding(float w, float h, float d, int floors, int colorIdx) {
+  (void)floors;
   // Modern office building colors
   const Color officeColors[] = {
     Palette::GLASS_DARK, Color(0.75f, 0.8f, 0.85f), Color(0.7f, 0.75f, 0.8f),
@@ -1457,6 +1462,7 @@ void drawShop(float w, float h, float d, int colorIdx,
 // ============================================================
 void drawCafe(float w, float h, float d, int colorIdx,
               const std::string &shopName) {
+  (void)colorIdx;
   Color baseCol = Color(0.9f, 0.85f, 0.75f); // Warm cafe colors
   baseCol.applyMaterial();
 
@@ -1839,39 +1845,39 @@ void drawModernVilla(float w, float h, float d, int colorIdx) {
     Color stoneGray(0.5f, 0.5f, 0.52f);
 
     // Asymmetric block design
-    // Block 1: Ground floor
+    // Block 1: Ground floor (Centered)
     starkWhite.applyMaterial();
     glPushMatrix();
-    glTranslatef(-w*0.1f, h*0.25f, 0);
+    glTranslatef(0, h*0.25f, 0); // Removed -w*0.1f offset
     drawCube(w*0.8f, h*0.5f, d);
     glPopMatrix();
 
-    // Block 2: Overhanging second floor
+    // Block 2: Overhanging second floor (Centered)
     glPushMatrix();
-    glTranslatef(w*0.1f, h*0.75f, d*0.1f);
+    glTranslatef(0, h*0.75f, 0); // Removed offset
     starkWhite.applyMaterial();
     drawCube(w*0.8f, h*0.5f, d*0.8f);
     
     // Wood panel accent
     woodAccent.applyMaterial();
     glPushMatrix();
-    glTranslatef(w*0.4f + 0.01f, 0, 0);
+    glTranslatef(w*0.4f, 0, 0);
     drawCube(0.1f, h*0.4f, d*0.6f);
     glPopMatrix();
     glPopMatrix();
 
-    // Large floor-to-ceiling windows
+    // Large floor-to-ceiling windows (Centered)
     Palette::GLASS_DARK.applyGlossyMaterial();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glPushMatrix();
-    glTranslatef(-w*0.1f, h*0.25f, d/2 + 0.02f);
+    glTranslatef(0, h*0.25f, d/2 + 0.02f);
     drawQuad(w*0.6f, h*0.4f);
     glPopMatrix();
     
-    // Modern Sliding glass doors on second floor
+    // Modern Sliding glass doors on second floor (Centered)
     glPushMatrix();
-    glTranslatef(w*0.1f, h*0.75f, d/2 + 0.02f);
+    glTranslatef(0, h*0.75f, d/2 + 0.02f);
     drawQuad(w*0.7f, h*0.4f);
     glPopMatrix();
     glDisable(GL_BLEND);
@@ -1987,9 +1993,13 @@ void drawTraditionalTemple(float w, float h, float d, int colorIdx) {
 // ============================================================
 // MAIN DISPATCHER
 // ============================================================
-void drawBuilding(const BuildingInfo &info) {
+void drawBuilding(const BuildingInfo &info, bool isShadow) {
   glPushMatrix();
   info.transform.applyGL();
+
+  // If it's a shadow pass, we can skip complex logic and just draw the building
+  // but for the best shadow shape, we let the specific functions run.
+  // The glDisable(GL_LIGHTING) and color overrides in main.cpp will handle the rest.
 
   switch (info.type) {
   case BLDG_TUBE_HOUSE:
@@ -2050,7 +2060,7 @@ void drawBuilding(const BuildingInfo &info) {
     drawMarketMall(info.width, info.height, info.depth, info.colorVariant, info.shopName);
     break;
   default:
-    getBuildingColor(info.colorVariant).applyMaterial();
+    if (!isShadow) getBuildingColor(info.colorVariant).applyMaterial();
     glPushMatrix();
     glTranslatef(0, info.height / 2.0f, 0);
     drawCube(info.width, info.height, info.depth);
