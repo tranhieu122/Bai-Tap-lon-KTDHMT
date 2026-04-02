@@ -37,7 +37,7 @@ namespace World {
     const float LANE_WIDTH = 4.5f;          
     const float SIDEWALK_WIDTH = 5.5f;      
     const float SIDEWALK_HEIGHT = 0.15f;    
-    const float MEDIAN_WIDTH = 0.0f;        // No median
+    const float MEDIAN_WIDTH = 0.8f;        // Added median for 3D road model
     const float BLOCK_DEPTH = 20.0f;        
 
     const float SIDE_STREET_LENGTH = 0.0f; // Disabled side street
@@ -471,6 +471,7 @@ namespace Palette {
     const Color GLASS_CLEAR(0.85f, 0.90f, 0.95f, 0.35f);  // Kinh trong
     const Color WOOD_LIGHT(0.75f, 0.58f, 0.38f);
     const Color WOOD_DARK(0.42f, 0.28f, 0.12f);
+    const Color WOOD_RED(0.55f, 0.15f, 0.10f); // Gỗ nâu đỏ rực
     const Color CONCRETE(0.70f, 0.68f, 0.65f);
     const Color TILE_WHITE(0.92f, 0.92f, 0.90f);      // Gach men trang
     const Color LEATHER_BROWN(0.45f, 0.25f, 0.15f);   // Mau da cho tui xach

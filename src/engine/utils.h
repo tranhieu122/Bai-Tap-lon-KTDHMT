@@ -62,6 +62,8 @@ void drawMesh(const Mesh& mesh);
 void drawModel(const Mesh& mesh, float scale, bool isZUp = false, float yOffset = 0.0f, float intrinsicRotation = 0.0f);
 bool loadTexture(const char* filename, GLuint& texID);
 void drawNeonSign(float w, float h, const Color& glowColor, const char* text = nullptr);
+void drawProjectingSign(float w, float h, const Color& color, const char* text = nullptr);
+void drawGlowBillboard(float size, const Color& color);
 
 // 3D MODELS
 bool loadOBJFromStream(std::istream& in, Mesh& mesh);
@@ -74,7 +76,7 @@ void drawWire(const Vector3& start, const Vector3& end, float sag = 0.5f, int se
 // ============================================================
 void drawText2D(float x, float y, const char* text, void* font = GLUT_BITMAP_HELVETICA_12);
 void drawText3D(float x, float y, float z, const char* text, void* font = GLUT_BITMAP_HELVETICA_10);
-void drawTextStroke(float x, float y, float z, const char* text, float scale = 0.005f);
+void drawTextStroke(float x, float y, float z, const char* text, float scale = 0.005f, bool centered = false);
 
 // ============================================================
 // COLOR HELPERS

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "camera.h"
 #include <cstdio>
 #include <cstring>
 #include <iostream>
@@ -926,71 +927,137 @@ void drawAwning(float width, float depth, const Color& color) {
 }
 
 void drawSignBoard(float w, float h, const Color& bgColor, const char* text) {
-    // Background board
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    // Background board (Thick panel)
     bgColor.applyMaterial();
     glPushMatrix();
-    glTranslatef(0, 0, 0.01f); // Small offset to prevent z-fighting
-    drawCube(w, h, 0.08f);
+    glTranslatef(0, 0, 0.05f); 
+    drawCube(w, h, 0.12f);
     glPopMatrix();
 
-    // Border
-    Color borderColor = bgColor.lerp(Color(0,0,0), 0.3f);
+    // Border (Decorative frame)
+    Color borderColor = bgColor.lerp(Color(0,0,0), 0.5f);
     borderColor.applyMaterial();
-    drawWireFrame(w + 0.02f, h + 0.02f, 0.09f, 0.03f);
+    glPushMatrix();
+    glTranslatef(0, 0, 0.11f);
+    drawWireFrame(w + 0.04f, h + 0.04f, 0.02f, 0.04f);
+    glPopMatrix();
 
-    // Text
+    // Text (Stroke font scales with distance)
     if (text) {
-        glColor3f(1, 1, 1);
-        glDisable(GL_LIGHTING);
-        drawText3D(0, 0, 0.05f, text);
-        glEnable(GL_LIGHTING);
+        setEmissiveMaterial(Color(1,1,1), Color(0.2f, 0.2f, 0.2f));
+        // Scale text to fit board width
+        float textScale = w * 0.007f / strlen(text);
+        if (textScale > 0.005f) textScale = 0.005f;
+        if (textScale < 0.002f) textScale = 0.002f;
+        drawTextStroke(0, -0.05f, 0.12f, text, textScale, true);
+        resetMaterial();
     }
+    glPopAttrib();
 }
 
 void drawNeonSign(float w, float h, const Color& glowColor, const char* text) {
-    // Dark background
-    Color(0.1f, 0.1f, 0.1f).applyMaterial();
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    // Main casing
+    Color(0.05f, 0.05f, 0.05f).applyMaterial();
     glPushMatrix();
-    glTranslatef(0, 0, 0.01f); // Small offset to prevent z-fighting
-    drawCube(w, h, 0.06f);
+    glTranslatef(0, 0, 0.02f);
+    drawCube(w, h, 0.1f);
     glPopMatrix();
 
-    // Check if it's night time to show glow
     bool isNight = (g_timeOfDay < 6.0f || g_timeOfDay > 18.0f);
 
     if (isNight) {
-        // Neon glow effect
-        glDisable(GL_LIGHTING);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-
-        // Outer glow
-        Color glow = glowColor;
-        glow.a = 0.3f;
-        glow.apply();
         glPushMatrix();
-        glTranslatef(0, 0, 0.04f);
-        drawQuad(w + 0.3f, h + 0.3f);
+        glTranslatef(0, 0, 0.1f);
+        drawGlowBillboard(w > h ? w * 1.5f : h * 1.5f, glowColor);
         glPopMatrix();
-
-        // Inner bright
-        glow.a = 0.8f;
-        glow.apply();
-        glPushMatrix();
-        glTranslatef(0, 0, 0.05f);
-        drawQuad(w - 0.1f, h - 0.1f);
-        glPopMatrix();
-
-        glDisable(GL_BLEND);
-        glEnable(GL_LIGHTING);
     }
 
-    // Text
     if (text) {
+        // High visibility 3D text
         setEmissiveMaterial(glowColor, isNight ? glowColor : Color(0,0,0));
-        drawText3D(0, 0, 0.04f, text);
+        float textScale = w * 0.008f / strlen(text);
+        if (textScale > 0.006f) textScale = 0.006f;
+        drawTextStroke(0, -h*0.15f, 0.1f, text, textScale, true);
         resetMaterial();
     }
+    glPopAttrib();
+}
+
+void drawProjectingSign(float w, float h, const Color& color, const char* text) {
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+    // Mounting bracket (Iron arm)
+    Palette::IRON_BLACK.applyMaterial();
+    glPushMatrix();
+    glTranslatef(-w/2 - 0.25f, 0, 0);
+    drawCube(0.5f, 0.08f, 0.08f);   // Arm
+    glTranslatef(-0.25f, 0.2f, 0); // Wall plate
+    drawCube(0.1f, 0.6f, 0.3f);
+    glPopMatrix();
+
+    // The Sign Board itself (Double sided)
+    color.applyMaterial();
+    glPushMatrix();
+    drawCube(w, h, 0.15f);
+    glPopMatrix();
+
+    // Billboard glow at night
+    if (g_timeOfDay < 6.0f || g_timeOfDay > 18.0f) {
+        glPushMatrix();
+        glTranslatef(0, 0, 0.12f);
+        drawGlowBillboard(w > h ? w * 1.2f : h * 1.2f, color);
+        glPopMatrix();
+    }
+
+    // Border
+    Palette::METAL_DARK.applyMaterial();
+    drawWireFrame(w + 0.02f, h + 0.02f, 0.17f, 0.03f);
+
+    // Text on both sides
+    if (text) {
+        setEmissiveMaterial(Color(1,1,1), Color(0.2f, 0.2f, 0.2f));
+        float textScale = w * 0.006f / strlen(text);
+        if (textScale > 0.004f) textScale = 0.004f;
+        
+        // Side 1
+        drawTextStroke(0, -textScale*50, 0.08f, text, textScale, true);
+        // Side 2 (Rotated)
+        glPushMatrix();
+        glRotatef(180, 0, 1, 0);
+        drawTextStroke(0, -textScale*50, 0.08f, text, textScale, true);
+        glPopMatrix();
+        resetMaterial();
+    }
+    glPopAttrib();
+}
+
+void drawGlowBillboard(float size, const Color& color) {
+    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending
+    glDepthMask(GL_FALSE);             // Don't write to depth buffer
+    glDisable(GL_LIGHTING);
+
+    glPushMatrix();
+    // Billboarding: Face the camera
+    glRotatef(cameraGetYaw(), 0, -1, 0);
+    glRotatef(cameraGetPitch(), -1, 0, 0);
+
+    Color c = color;
+    // Layered approach for soft glow
+    // 1. Core
+    c.a = 0.8f; c.apply();
+    drawQuad(size * 0.15f, size * 0.15f);
+    // 2. Middle
+    c.a = 0.25f; c.apply();
+    drawQuad(size * 0.5f, size * 0.5f);
+    // 3. Outer
+    c.a = 0.08f; c.apply();
+    drawQuad(size, size);
+
+    glPopMatrix();
+    glPopAttrib();
 }
 
 void drawWire(const Vector3& start, const Vector3& end, float sag, int segments) {
@@ -1054,10 +1121,22 @@ void drawText3D(float x, float y, float z, const char* text, void* font) {
     }
 }
 
-void drawTextStroke(float x, float y, float z, const char* text, float scale) {
+void drawTextStroke(float x, float y, float z, const char* text, float scale, bool centered) {
+    if (!text) return;
     glPushMatrix();
     glTranslatef(x, y, z);
     glScalef(scale, scale, scale);
+    
+    if (centered) {
+        float totalWidth = 0;
+        const char* t = text;
+        while (*t) {
+            totalWidth += glutStrokeWidth(GLUT_STROKE_MONO_ROMAN, *t);
+            t++;
+        }
+        glTranslatef(-totalWidth / 2.0f, 0, 0);
+    }
+
     while (*text) {
         glutStrokeCharacter(GLUT_STROKE_MONO_ROMAN, *text);
         text++;

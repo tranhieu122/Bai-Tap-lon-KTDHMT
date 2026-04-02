@@ -18,6 +18,10 @@ void planterBoxDraw();
 // Authentic Vietnamese Polish
 void drawElectricPole();
 void drawStreetWires();
+void stoolDraw(const Color& color);
+void teaTableDraw();
+void teaGroupDraw();
+void sidewalkStallDraw(const Color& color);
 void furnitureClearState();
 
 

@@ -56,163 +56,71 @@ static void drawNonLa() {
     glPopMatrix();
 }
 
-static void drawHuman(int colorVar, int shirtColorIdx, float rLegA, float rKneeA, float lLegA, float lKneeA, 
-                      float rArmA, float lArmA, bool isWaving, float yOffset, 
+static void drawHuman(int colorVar, int shirtColorIdx, float yOffset, 
                       float walkPhase = 0, bool isShadow = false, bool hasBag = false) {
-                           
-    Color shirt = getShirtColor(shirtColorIdx);
-    Color pants = getPantsColor(colorVar);
+    (void)shirtColorIdx; // Suppress warning - model 3D uses general skin material for now                       
     Color skin = Palette::SKIN_MEDIUM;
     if (colorVar % 3 == 0) skin = Palette::SKIN_LIGHT;
     
     // Animation nuances
     float sway = sinf(walkPhase) * 1.8f;   // Slight lateral tilt
-    float hips = cosf(walkPhase) * 4.5f;   // Hip tilt
-    float torsoRot = sinf(walkPhase) * 6.0f; // Body rotation
     
     glPushMatrix();
     glTranslatef(0.0f, yOffset, 0.0f);
     glRotatef(sway, 0, 0, 1); 
 
-    // 1. HEAD & NECK
-    glPushMatrix();
-    glTranslatef(0.0f, 1.54f, 0.0f); 
-    if (!isShadow) skin.applyMaterial();
-    drawCylinder(0.045f, 0.12f, 8); // Neck
-    
-    glTranslatef(0.0f, 0.14f, 0.0f); 
-    drawSphere(0.12f, 12, 10); // Head
-    
-    // Eyes Detail
-    if (!isShadow) {
-        Palette::METAL_DARK.applyMaterial();
-        glPushMatrix();
-        glTranslatef(-0.04f, 0.03f, 0.11f);
-        drawCube(0.02f, 0.02f, 0.01f); // L-Eye
-        glTranslatef(0.08f, 0, 0);
-        drawCube(0.02f, 0.02f, 0.01f); // R-Eye
-        glPopMatrix();
-        
-        // Hair (if no hat)
-        if (colorVar % 2 != 0) {
-            Palette::WOOD_DARK.applyMaterial();
-            glPushMatrix();
-            glTranslatef(0, 0.06f, -0.02f);
-            drawSphere(0.125f, 10, 8);
-            glPopMatrix();
+    // 1. NHÂN VẬT 3D CHÍNH (Thay thế toàn bộ các khối ghép trước đây)
+    if (!g_humanMesh.vertices.empty()) {
+        if (!isShadow) {
+            skin.applyMaterial();
         }
+        // Tỉ lệ 0.92f phù hợp với chiều cao trung bình trong phố
+        drawModel(g_humanMesh, 0.92f, false, 0.0f, 0.0f);
+    } else {
+        // Fallback dự phòng nếu model không nạp được
+        glPushMatrix();
+        glTranslatef(0, 0.85f, 0);
+        drawCube(0.3f, 1.7f, 0.3f);
+        glPopMatrix();
     }
-    
-    if (colorVar % 2 == 0) drawNonLa();
-    glPopMatrix();
 
-    // 2. TORSO (Seamless Shoulders)
-    glPushMatrix();
-    glTranslatef(0.0f, 1.25f, 0.0f);
-    glRotatef(torsoRot, 0, 1, 0); 
-    if (!isShadow) shirt.applyMaterial();
-    
-    // Chest/Shoulder part (Wide)
-    drawCube(0.44f, 0.42f, 0.22f); 
-    // Waist/Belly (Narrower)
-    glTranslatef(0, -0.32f, 0);
-    drawCube(0.34f, 0.4f, 0.18f);
-    glPopMatrix();
+    // 2. PHỤ KIỆN VIỆT NAM (Nón Lá & Túi xách)
+    if (colorVar % 2 == 0) {
+        glPushMatrix();
+        glTranslatef(0.0f, 1.74f, 0.01f); // Đặt lên đỉnh đầu model 3D
+        drawNonLa();
+        glPopMatrix();
+    }
 
-    // 3. L-LEG & FOOT
-    glPushMatrix();
-    glTranslatef(-0.11f, 0.95f, 0.0f);
-    glRotatef(lLegA, 1, 0, 0);
-    glRotatef(-hips, 0, 0, 1); 
-    if (!isShadow) pants.applyMaterial();
-    
-    glPushMatrix(); glTranslatef(0, -0.22f, 0); drawCylinder(0.08f, 0.45f, 8); glPopMatrix();
-    glTranslatef(0.0f, -0.45f, 0.0f);
-    glRotatef(lKneeA, 1, 0, 0);
-    glPushMatrix(); glTranslatef(0, -0.22f, 0); drawCylinder(0.065f, 0.45f, 8); glPopMatrix();
-    
-    if (!isShadow) Palette::METAL_DARK.applyMaterial();
-    glTranslatef(0.0f, -0.45f, 0.08f);
-    drawCube(0.09f, 0.06f, 0.22f);
-    glPopMatrix();
-
-    // 4. R-LEG & FOOT
-    glPushMatrix();
-    glTranslatef(0.11f, 0.95f, 0.0f);
-    glRotatef(rLegA, 1, 0, 0);
-    glRotatef(hips, 0, 0, 1);
-    if (!isShadow) pants.applyMaterial();
-    
-    glPushMatrix(); glTranslatef(0, -0.22f, 0); drawCylinder(0.08f, 0.45f, 8); glPopMatrix();
-    glTranslatef(0.0f, -0.45f, 0.0f);
-    glRotatef(rKneeA, 1, 0, 0);
-    glPushMatrix(); glTranslatef(0, -0.22f, 0); drawCylinder(0.065f, 0.45f, 8); glPopMatrix();
-    
-    if (!isShadow) Palette::METAL_DARK.applyMaterial();
-    glTranslatef(0.0f, -0.45f, 0.08f);
-    drawCube(0.09f, 0.06f, 0.22f);
-    glPopMatrix();
-
-    // 5. L-ARM (Connects directly to torso edge)
-    glPushMatrix();
-    glTranslatef(-0.22f, 1.44f, 0.0f); // Pivot at the side edge of torso top
-    if (isWaving) glRotatef(-150.0f, 1, 0, 0); 
-    else glRotatef(lArmA, 1, 0, 0);
-    
-    if (!isShadow) shirt.applyMaterial();
-    glPushMatrix(); glTranslatef(0, -0.28f, 0); drawCylinder(0.055f, 0.55f, 8); glPopMatrix();
-    
-    if (!isShadow) skin.applyMaterial();
-    glTranslatef(0, -0.55f, 0);
-    drawSphere(0.05f, 6, 6);
-    glPopMatrix();
-
-    // 6. R-ARM
-    glPushMatrix();
-    glTranslatef(0.22f, 1.44f, 0.0f);
-    glRotatef(rArmA, 1, 0, 0);
-    
-    if (!isShadow) shirt.applyMaterial();
-    glPushMatrix(); glTranslatef(0, -0.28f, 0); drawCylinder(0.055f, 0.55f, 8); glPopMatrix();
-    
-    if (!isShadow) skin.applyMaterial();
-    glTranslatef(0, -0.55f, 0);
-    drawSphere(0.05f, 6, 6);
-    glPopMatrix();
-
-    // Handbag logic
     if (hasBag) {
         drawHandbag(isShadow);
     }
 
-    glPopMatrix(); // End Root
+    glPopMatrix(); // Kết thúc Root của drawHuman
 }
 
 void personStandingDraw(int colorVar, int shirtColor, bool isShadow, bool hasBag) {
-    drawHuman(colorVar, shirtColor, 0, 0, 0, 0, 4, 4, false, 0, 0, isShadow, hasBag);
+    drawHuman(colorVar, shirtColor, 0, 0, isShadow, hasBag);
 }
 
 void personWalkingDraw(int colorVar, int shirtColor, float walkPhase, bool isWaving, bool isShadow, bool hasBag) {
+    (void)isWaving;
     float swing = sinf(walkPhase);
     float yOffset = fabsf(swing) * 0.04f; 
     
-    float legA = swing * 28.0f;
-    float lKnee = (swing > 0) ? swing * 35.0f : 5.0f;
-    float rKnee = (swing < 0) ? -swing * 35.0f : 5.0f;
-    
     glPushMatrix();
     glRotatef(3.0f, 1, 0, 0); // Natural lean
-    drawHuman(colorVar, shirtColor, -legA, rKnee, legA, lKnee, legA * 0.9f, -legA * 0.9f, isWaving, yOffset, walkPhase, isShadow, hasBag);
+    drawHuman(colorVar, shirtColor, yOffset, walkPhase, isShadow, hasBag);
     glPopMatrix();
 }
 
 void personSittingDraw(int colorVar, int shirtColor, bool isShadow) {
-    drawHuman(colorVar, shirtColor, -85, 85, -85, 85, 20, 20, false, -0.45f, 0, isShadow, false);
+    drawHuman(colorVar, shirtColor, -0.45f, 0, isShadow, false);
 }
 
 void vendorDraw(int colorVar, int shirtColor, bool isShadow) {
-    // Arms matching shoulder height
-    drawHuman(colorVar, shirtColor, 0, 0, 0, 0, -85, -85, false, 0, 0, isShadow, false); 
+    // Basic human body for vendor
+    drawHuman(colorVar, shirtColor, 0, 0, isShadow, false); 
     
     // Pole (Đòn gánh) - Precise shoulder rest
     if (!isShadow) Palette::WOOD_LIGHT.applyMaterial();

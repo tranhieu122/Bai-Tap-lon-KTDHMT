@@ -166,6 +166,13 @@ void spawnProps() {
 
 void sceneInit() {
   seedRandom(42);
+  
+  // Load 3D Models
+  loadMeshFromOBJ("camaro2.obj", g_camaroMesh);
+  loadMeshFromOBJ("racing_car.obj", g_racingCarMesh);
+  loadMeshFromOBJ("human.obj", g_humanMesh);
+  loadMeshFromOBJ("tree.obj", g_treeMesh);
+
   spawnBuildings();
   spawnProps();
 }

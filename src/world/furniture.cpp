@@ -10,36 +10,60 @@
 static std::vector<Vector3> g_electricPolePositions;
 
 void drawElectricPole() {
-  // Thân cột bê tông (Concrete pole)
+  // 1. Thân cột bê tông (Concrete pole)
   Palette::CONCRETE.applyMaterial();
   glPushMatrix();
   glTranslatef(0, 4.0f, 0);
-  drawCylinder(0.2f, 8.0f, 12);
+  drawCylinder(0.22f, 8.0f, 12);
   glPopMatrix();
 
-  // Xà sứ (Cross-arms with insulators)
+  // 2. Các xà sứ nhiều tầng (Detailed multi-tier cross-arms)
   Palette::METAL_DARK.applyMaterial();
-  for (float y = 6.5f; y <= 7.5f; y += 0.5f) {
+  for (int i = 0; i < 3; i++) {
+    float y = 6.2f + i * 0.6f;
     glPushMatrix();
     glTranslatef(0, y, 0);
-    drawCube(1.2f, 0.1f, 0.1f);
+    glRotatef(i * 30.0f, 0, 1, 0); // Xoay nhẹ từng tầng xà cho "rối"
+    drawCube(1.5f, 0.08f, 0.08f);
     
     // Sứ cách điện (Insulators)
     Palette::WALL_WHITE.applyMaterial();
-    for (float x = -0.5f; x <= 0.5f; x += 0.5f) {
+    for (float x = -0.6f; x <= 0.6f; x += 0.4f) {
+      if (fabsf(x) < 0.1f) continue;
       glPushMatrix();
-      glTranslatef(x, 0.15f, 0);
-      drawCylinder(0.06f, 0.2f, 8);
+      glTranslatef(x, 0.12f, 0);
+      drawCylinder(0.04f, 0.18f, 6);
       glPopMatrix();
     }
     glPopMatrix();
   }
 
-  // Tủ điện/Công tơ (Electric meters/boxes)
-  Palette::METAL_GRAY.applyMaterial();
+  // 3. Đống hộp công tơ điện lộn xộn (Messy electric meter boxes)
+  for (int k = 0; k < 5; k++) {
+      glPushMatrix();
+      float boxY = 2.5f + k * 0.45f;
+      float boxAngle = k * 72.0f;
+      glRotatef(boxAngle, 0, 1, 0);
+      glTranslatef(0.22f, boxY, 0);
+      
+      // Màu hộp bạc màu
+      Color boxCol = (k % 2 == 0) ? Palette::METAL_GRAY : Color(0.3f, 0.3f, 0.35f);
+      boxCol.applyMaterial();
+      drawCube(0.25f, 0.4f, 0.2f);
+      
+      // Thêm nắp hộp
+      glTranslatef(0.12f, 0, 0);
+      Color(0.2f, 0.2f, 0.2f).applyMaterial();
+      drawCube(0.02f, 0.35f, 0.18f);
+      glPopMatrix();
+  }
+
+  // 4. Biển quảng cáo khoan cắt bê tông / rao vặt (Street posters)
   glPushMatrix();
-  glTranslatef(0.15f, 3.0f, 0);
-  drawCube(0.4f, 0.6f, 0.3f);
+  glRotatef(-20, 0, 1, 0);
+  glTranslatef(0.23f, 1.8f, 0);
+  Palette::WALL_WHITE.applyMaterial();
+  drawQuad(0.3f, 0.5f); // Tờ rơi dán cột
   glPopMatrix();
 }
 
@@ -328,52 +352,6 @@ void busStopDraw() {
   glPopMatrix();
 }
 
-void stoolDraw(Color col) {
-  // Ghế nhựa "huyền thoại" Việt Nam - chi tiết hơn
-  col.applyMaterial();
-  float w = 0.35f, h = 0.45f;
-  
-  // Mặt ghế (Seat)
-  glPushMatrix();
-  glTranslatef(0, h - 0.03f, 0);
-  drawRoundedBox(w, 0.06f, w, 0.05f, 4); // Dùng rounded box cho mặt ghế
-  glPopMatrix();
-
-  // 4 chân ghế có độ vát (Tapered legs)
-  for (int i = 0; i < 4; i++) {
-    glPushMatrix();
-    float tx = (i < 2 ? 1 : -1) * (w / 2 - 0.05f);
-    float tz = (i % 2 == 0 ? 1 : -1) * (w / 2 - 0.05f);
-    glTranslatef(tx, h / 2 - 0.03f, tz);
-    glRotatef((tx < 0 ? 1.0f : -1.0f) * 8.0f, 0, 0, 1);
-    glRotatef((tz < 0 ? 1.0f : -1.0f) * 8.0f, 1, 0, 0);
-    drawCube(0.04f, h - 0.06f, 0.04f);
-    glPopMatrix();
-  }
-}
-
-void teaTableDraw() {
-  // Bàn trà gỗ thấp
-  Palette::WOOD_DARK.applyMaterial();
-  float w = 0.65f, h = 0.42f;
-  
-  // Mặt bàn
-  glPushMatrix();
-  glTranslatef(0, h, 0);
-  drawCube(w, 0.05f, w);
-  glPopMatrix();
-
-  // Khung và chân bàn
-  Palette::IRON_BLACK.applyMaterial();
-  for (int i=0; i<4; i++) {
-      glPushMatrix();
-      float tx = (i < 2 ? 0.25f : -0.25f);
-      float tz = (i % 2 == 0 ? 0.25f : -0.25f);
-      glTranslatef(tx, h / 2, tz);
-      drawCylinder(0.02f, h, 8);
-      glPopMatrix();
-  }
-}
 
 void planterBoxDraw() {
   Palette::CONCRETE.applyMaterial();
@@ -392,41 +370,56 @@ void planterBoxDraw() {
   glPopMatrix();
 }
 
+
 // ============================================================
-// VIETNAMESE SIDEWALK STALL (Ganh hang rong)
+// VIETNAMESE SIDEWALK PROPS
 // ============================================================
-void sidewalkStallDraw(Color col) {
-    // Gánh hàng rong truyền thống
-    Palette::WOOD_DARK.applyMaterial();
+
+void stoolDraw(const Color& color) {
+    color.applyMaterial();
+    // Typical Vietnamese plastic stool (0.3x0.3x0.25m)
+    glPushMatrix();
+    glTranslatef(0, 0.125f, 0);
+    drawCube(0.3f, 0.25f, 0.3f);
     
-    // Đòn gánh (Bamboo pole)
+    // Simple legs proxy
+    Palette::WOOD_DARK.applyMaterial();
+    glTranslatef(0, -0.05f, 0);
+    drawCube(0.22f, 0.15f, 0.32f); 
+    drawCube(0.32f, 0.15f, 0.22f);
+    glPopMatrix();
+}
+
+void teaTableDraw() {
+    // Low wooden or plastic table
+    Palette::WOOD_DARK.applyMaterial();
+    glPushMatrix();
+    glTranslatef(0, 0.18f, 0);
+    drawCube(0.45f, 0.36f, 0.45f); // Legs
+    
+    glTranslatef(0, 0.2f, 0);
+    Palette::WOOD_RED.applyMaterial();
+    drawCube(0.65f, 0.05f, 0.65f); // Top
+    glPopMatrix();
+}
+
+void sidewalkStallDraw(const Color& color) {
+    // Street vendor stall (Xe day / Quan hang)
+    Palette::METAL_GRAY.applyMaterial();
     glPushMatrix();
     glTranslatef(0, 1.2f, 0);
-    drawCylinder(0.03f, 2.2f, 8); // Xoay lại thành cylinder nằm ngang
+    drawCube(1.8f, 2.4f, 0.8f); // Main structure
+    
+    // Front counter
+    glTranslatef(0, -0.4f, 0.45f);
+    color.applyMaterial();
+    drawCube(1.6f, 0.8f, 0.1f);
+    
+    // Simple roof
+    glTranslatef(0, 1.2f, -0.1f);
+    Palette::METAL_DARK.applyMaterial();
+    drawTrapezoid(1.9f, 2.1f, 0.3f, 1.0f);
     glPopMatrix();
-
-    // Thúng/Mẹt (Baskets)
-    for (int i = 0; i < 2; i++) {
-        float bx = (i == 0 ? 0.9f : -0.9f);
-        glPushMatrix();
-        glTranslatef(bx, 0.35f, 0);
-        col.applyMaterial();
-        drawCylinder(0.45f, 0.5f, 16); // Thân thúng rộng hơn
-        
-        // Vành thúng (Rim)
-        Palette::WOOD_LIGHT.applyMaterial();
-        glPushMatrix(); 
-        glTranslatef(0, 0.22f, 0); 
-        drawDisk(0.42f, 0.48f, 16); 
-        glPopMatrix();
-
-        // Dây treo (Ropes)
-        Palette::METAL_GRAY.applyMaterial();
-        glBegin(GL_LINES);
-        glVertex3f(0, 0.85f, 0); glVertex3f(0, 0.25f, 0);
-        glEnd();
-        glPopMatrix();
-    }
 }
 
 // ============================================================

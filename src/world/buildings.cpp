@@ -59,7 +59,7 @@ static void drawDetailedWindow(float w, float h, int panes_h = 2, int panes_w = 
       // Hiệu ứng ánh sáng đêm (Night lighting effect - Emissive interior)
       if (g_timeOfDay > 18.0f || g_timeOfDay < 6.0f) {
            glPushMatrix();
-           glTranslatef(px_pos, py_pos, 0.015f);
+           glTranslatef(px_pos, py_pos, 0.04f);
            
            // Màu đèn ngẫu nhiên dựa trên variant (Căn hộ thường dùng đèn ấm, văn phòng đèn trắng)
            Color lightCol = (variant % 3 == 0) ? Color(1.0f, 0.92f, 0.7f) : Color(0.85f, 0.95f, 1.0f);
@@ -69,10 +69,7 @@ static void drawDetailedWindow(float w, float h, int panes_h = 2, int panes_w = 
            Color emissiveCol = lightCol;
            emissiveCol.r *= intensity; emissiveCol.g *= intensity; emissiveCol.b *= intensity;
 
-           glDisable(GL_LIGHTING);
-           emissiveCol.apply();
-           drawQuad(paneW * 0.88f, paneH * 0.88f);
-           glEnable(GL_LIGHTING);
+           drawGlowBillboard(paneW > paneH ? paneW * 1.2f : paneH * 1.2f, emissiveCol);
            glPopMatrix();
       }
 
@@ -622,7 +619,9 @@ static void drawWaterTank(float r, float l) {
 }
 
 static void drawShopFront(float w, float h, float d, const std::string &name, int colorIdx = 0) {
-  (void)name;
+  // Protect all states (blending, materials, matrix)
+  glPushAttrib(GL_ALL_ATTRIB_BITS);
+
   // Glass front
   Palette::GLASS_BLUE.applyGlossyMaterial(100.0f);
   glEnable(GL_BLEND);
@@ -634,37 +633,66 @@ static void drawShopFront(float w, float h, float d, const std::string &name, in
   glPopMatrix();
   glDisable(GL_BLEND);
 
-  // Door
+  // Doors
   glPushMatrix();
   glTranslatef(w / 4, h / 2 - 0.5f, d / 2 + 0.05f);
-  drawDoor(1.5f, 2.5f, true); // Roller door half open? Usually closed if night,
-                              // but let's do glass door
+  drawDoor(1.5f, 2.5f, true); 
   glPopMatrix();
 
-  glPushMatrix();
-  glTranslatef(-w / 4, 1.25f, d / 2 + 0.05f);
-  drawDoor(w / 3, 2.5f, false);
-  glPopMatrix();
-
-  // Signboard / Neon Sign
-  const char* vnSigns[] = { 
-      "PHO GIA TRUYEN", "CA PHE SUA DA", "BUN CHA HA NOI", "TAP HOA 24H", 
-      "BANH MI SAI GON", "TRA DA VIA HE", "KARAOKE 5 SAO", "SPA & BEAUTY"
+  // 1. MAIN HEADER SIGN (Biển hiệu chính)
+  const char* shopText = name.empty() ? "CUA HANG" : name.c_str();
+  
+  // Vibrant Vietnamese shop board colors
+  Color boardColors[] = {
+      Palette::VEH_RED, Palette::VEH_BLUE, Palette::VEH_GREEN,
+      Palette::VEH_YELLOW, Palette::VEH_BLACK, Color(0.1f, 0.4f, 0.2f)
   };
-  const char* currentSign = vnSigns[colorIdx % 8];
-
+  Color boardCol = boardColors[abs(colorIdx) % 6];
+  
   glPushMatrix();
-  glTranslatef(0, h - 0.6f, d / 2 + 0.1f);
-  // Sử dụng Neon Sign cho sinh động vào ban đêm
-  Color neonCol = getShirtColor(colorIdx % 8);
-  drawNeonSign(w * 0.9f, 0.8f, neonCol, currentSign);
+  glTranslatef(0, h - 0.6f, d / 2 + 0.15f);
+  
+  // Drawing the large board
+  drawSignBoard(w * 0.95f, 0.9f, boardCol, shopText);
+  
+  // 2. SECONDARY DETAILS (Số nhà, Tên phố)
+  const char* streets[] = {"PHO HUE", "HANG BAC", "NGUYEN TRAI", "DIEN BIEN PHU", "LE LOI"};
+  char details[64];
+  // SAFETY: Use snprintf and abs() for index to prevent stack corruption
+  snprintf(details, sizeof(details), "SO %d - %s", (abs(colorIdx) * 17) % 200 + 1, streets[abs(colorIdx) % 5]);
+  
+  // Miniature text at bottom left of the board
+  glPushMatrix();
+  glTranslatef(-w * 0.4f, -0.3f, 0.08f);
+  drawTextStroke(0, 0, 0, details, 0.0015f, false);
   glPopMatrix();
+
+  // "Hotline" on bottom right
+  glPushMatrix();
+  glTranslatef(w * 0.2f, -0.3f, 0.08f);
+  drawTextStroke(0, 0, 0, "HOTLINE: 09xx", 0.0012f, false);
+  glPopMatrix();
+  
+  glPopMatrix();
+
+  // 3. PROJECTING SIGN (Biển vẫy) - Common in VN, sticks out from wall
+  if ((abs(colorIdx) + 2) % 3 != 0) {
+      glPushMatrix();
+      glTranslatef(w/2 + 0.02f, h * 0.65f, d/2);
+      glRotatef(90, 0, 1, 0); // Sick out from the facade
+      
+      const char* vSigns[] = {"TOP", "SALE", "HOT", "24H", "SPA", "FREE"};
+      drawProjectingSign(0.6f, 0.6f, boardColors[(abs(colorIdx) + 2) % 6], vSigns[abs(colorIdx) % 6]);
+      glPopMatrix();
+  }
 
   // Awning
   glPushMatrix();
   glTranslatef(0, h - 1.2f, d / 2);
-  drawAwning(w, 1.2f, Palette::NEON_RED); // reduced from 2.0f
+  drawAwning(w, 1.2f, Palette::NEON_RED); 
   glPopMatrix();
+
+  glPopAttrib(); // Restore all states
 }
 
 static void drawWindowsArrangement(float w, float h, float d, int count) {
@@ -1385,6 +1413,17 @@ void drawOfficeBuilding(float w, float h, float d, int floors, int colorIdx) {
   glPushMatrix();
   glTranslatef(0, 1.5f, d / 2 + 0.02f);
   drawWindow(w * 0.5f, 3.0f, true);
+  // Entrance Glow
+  if (g_timeOfDay < 6.0f || g_timeOfDay > 18.0f) {
+      glTranslatef(0, 0, 0.1f);
+      drawGlowBillboard(4.0f, Color(0.8f, 0.9f, 1.0f));
+  }
+  glPopMatrix();
+
+  // GIANT NEON SIGN ON TOP
+  glPushMatrix();
+  glTranslatef(0, h + 1.5f, d / 2 - 0.5f);
+  drawNeonSign(w * 0.7f, 2.5f, Palette::NEON_CYAN, "TECH CENTER");
   glPopMatrix();
 
   // Rooftop elements - AC units with variation
@@ -1471,6 +1510,18 @@ void drawCafe(float w, float h, float d, int colorIdx,
   drawCubeTextured(w, h, d); // Assume Brick or painted brick
   glPopMatrix();
 
+  // 1. Phào chỉ trang trí (Moldings/Cornices)
+  Palette::CONCRETE.applyMaterial();
+  glPushMatrix();
+  glTranslatef(0, FLOOR_HEIGHT - 0.05f, d / 2 + 0.1f);
+  drawCube(w + 0.2f, 0.1f, 0.2f); // Floor divider moulding
+  glPopMatrix();
+
+  glPushMatrix();
+  glTranslatef(0, h - 0.05f, d / 2 + 0.15f);
+  drawCube(w + 0.4f, 0.15f, 0.3f); // Roof cornice
+  glPopMatrix();
+
   // Open front (folding doors)
   Palette::WOOD_DARK.applyMaterial();
   glPushMatrix();
@@ -1484,19 +1535,10 @@ void drawCafe(float w, float h, float d, int colorIdx,
   drawAwning(w + 1.0f, 1.2f, Color(0.15f, 0.35f, 0.15f)); // reduced from 3.5f
   glPopMatrix();
 
-  // Outdoor seating (Tables & Chairs are Furniture in Furniture System,
-  // but we can spawn a few basic shapes here for simplicity or rely on Scene
-  // Manager) Small menu board
+  // Sign (Neon for shop name)
   glPushMatrix();
-  glTranslatef(w / 2 - 1.0f, 0.6f, d / 2 + 1.0f);
-  glRotatef(-30, 0, 1, 0);
-  drawSignBoard(0.8f, 1.2f, Color(0.1f, 0.1f, 0.1f), nullptr);
-  glPopMatrix();
-
-  // Sign
-  glPushMatrix();
-  glTranslatef(0, h, d / 2);
-  drawNeonSign(w * 0.8f, 1.5f, Palette::NEON_YELLOW, shopName.c_str());
+  glTranslatef(0, FLOOR_HEIGHT + 0.5f, d / 2 + 0.2f);
+  drawNeonSign(w * 0.9f, 0.8f, Palette::NEON_PINK, shopName.c_str());
   glPopMatrix();
 }
 

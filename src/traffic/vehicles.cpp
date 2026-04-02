@@ -498,9 +498,22 @@ void drawCamaro(int colorVar) {
     }
     
     getVehicleColor(colorVar).applyMaterial();
-    // Camaro: scale 0.8, isZUp=false (Standard Y-up), intrinsicRotation=0 
-    // Increased scale for premium presence
+    // Camaro: scale 0.8, Y-up, slight height offset 0.01f
     drawModel(g_camaroMesh, 0.8f, false, 0.01f, 0.0f);
+}
+
+void drawRacingCar(int colorVar) {
+    if (g_racingCarMesh.vertices.empty()) {
+        carDraw(colorVar, "", false);
+        return;
+    }
+    
+    getVehicleColor(colorVar).applyMaterial();
+    // Racing Car: scale 1.0, Y-up, height offset 0.05f
+    // Need higher glossy finish for racing car
+    Palette::METAL_CHROME.applyGlossyMaterial(128.0f);
+    getVehicleColor(colorVar).apply(); 
+    drawModel(g_racingCarMesh, 1.0f, false, 0.05f, 0.0f);
 }
 
 // ============================================================
@@ -759,12 +772,13 @@ void vehicleDraw(const VehicleInfo& info, bool isShadow) {
     switch(info.type) {
         case VEH_MOTORBIKE: motorbikeDraw(info.colorVariant, info.bienSo, isShadow); break;
         case VEH_CAR_SEDAN: 
-            if (info.colorVariant % 3 == 0) drawCamaro(info.colorVariant);
-            else if (info.colorVariant % 3 == 1 && !g_racingCarMesh.vertices.empty()) {
+            if (info.colorVariant % 2 == 0) {
+                drawCamaro(info.colorVariant);
+            } else {
                 getVehicleColor(info.colorVariant).applyMaterial();
-                drawModel(g_racingCarMesh, 0.8f, false, 0.02f, 0.0f);
+                // Racing car model
+                drawModel(g_racingCarMesh, 0.82f, false, 0.02f, 0.0f);
             }
-            else carDraw(info.colorVariant, info.bienSo, false, Color(1,1,1), isShadow); 
             break;
         case VEH_CAR_SUV:   suvDraw(info.colorVariant, info.bienSo, isShadow); break;
         case VEH_BUS:       busDraw(info.colorVariant, info.bienSo, isShadow); break;
